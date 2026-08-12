@@ -2,34 +2,35 @@ import math
 import time
 import torch
 import torch.nn.functional as F
+from transformers import DynamicCache
 
 
 def _sync(device):
     if device.type == "cuda":
         torch.cuda.synchronize()
+        
 def alfa(prihvaceno, ponudjeno):
     return prihvaceno / ponudjeno
 
 @torch.no_grad()
 def izmeri_c(draft, target, ids, ponavljanja=10):
+    # c mora da meri cenu jednog KORAKA dekodiranja sa cache-om,
+    # ne cenu punog prolaza kroz prefiks
     device = ids.device
 
-    draft(ids)
-    target(ids)
-    _sync(device)
+    def vreme_koraka(model):
+        cache = DynamicCache()
+        model(ids, past_key_values=cache, use_cache=True)   # prefill, ne meri se
+        _sync(device)
+        token = ids[:, -1:]
+        t0 = time.perf_counter()
+        for _ in range(ponavljanja):
+            model(token, past_key_values=cache, use_cache=True)
+        _sync(device)
+        return (time.perf_counter() - t0) / ponavljanja
 
-    t0 = time.perf_counter()
-    for _ in range(ponavljanja):
-        draft(ids)
-    _sync(device)
-    t_draft = (time.perf_counter() - t0) / ponavljanja
-
-    t0 = time.perf_counter()
-    for _ in range(ponavljanja):
-        target(ids)
-    _sync(device)
-    t_target = (time.perf_counter() - t0) / ponavljanja
-
+    t_draft = vreme_koraka(draft)
+    t_target = vreme_koraka(target)
     return t_draft / t_target, t_draft, t_target
 
 def ocekivano_tokena(a, gamma):
@@ -47,11 +48,31 @@ def izmereno_ubrzanje(t_baseline, t_spekulativno):
 
 
 @torch.no_grad()
-def autoregresivno(model, ids, max_novih):
+def autoregresivno(model, ids, max_novih, dijagnostika=False):
+    pocetna = ids.shape[1]
+    vremena = []
+    cache = DynamicCache()
+    ulaz = ids                      # prvi poziv obradi ceo prefiks (prefill)
     for _ in range(max_novih):
-        p = torch.softmax(model(ids).logits[0, -1].float(), dim=-1)
+        t0 = time.perf_counter()
+        izlaz = model(ulaz, past_key_values=cache, use_cache=True)
+        cache = izlaz.past_key_values
+        p = torch.softmax(izlaz.logits[0, -1].float(), dim=-1)
         x = torch.multinomial(p, 1)
         ids = torch.cat([ids, x.unsqueeze(0)], dim=1)
+        ulaz = x.unsqueeze(0)       # dalje samo novi token
+        _sync(ids.device)
+        vremena.append(time.perf_counter() - t0)
+    if dijagnostika:
+        return ids, {
+            "poziva": len(vremena),
+            "novih_tokena": ids.shape[1] - pocetna,
+            "duzina_na_kraju": ids.shape[1],
+            "prvi_poziv_s": vremena[0],
+            "poslednji_poziv_s": vremena[-1],
+            "prosek_s": sum(vremena) / len(vremena),
+            "ukupno_s": sum(vremena),
+        }
     return ids
 
 def odstupanje_raspodele(p, q):
