@@ -1,8 +1,13 @@
 .venv/
+venv/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
 results/*.json
 *.pt
 *.safetensors
+
+# dataset - prevelik za git
 data/
+data.zip
+*.parquet
