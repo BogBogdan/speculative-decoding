@@ -7,6 +7,7 @@ import torch.nn.functional as F
 def _sync(device):
     if device.type == "cuda":
         torch.cuda.synchronize()
+    
 def alfa(prihvaceno, ponudjeno):
     return prihvaceno / ponudjeno
 
@@ -81,12 +82,14 @@ def empirijska_ekvivalentnost(p, q, uzoraka=100000, seed=0):
 
 @torch.no_grad()
 def perplexity(model, sekvence):
+    device = next(model.parameters()).device
     ukupno_nll = 0.0
     ukupno_tokena = 0
 
     for ids in sekvence:
         if ids.dim() == 1:
             ids = ids.unsqueeze(0)
+        ids = ids.to(device)
         if ids.shape[1] < 2:
             continue
         logits = model(ids).logits[0, :-1].float()
