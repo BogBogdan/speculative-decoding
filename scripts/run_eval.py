@@ -11,7 +11,7 @@ from src.speculative import speculative_sampling
 from src.metrics import Merenja, izmeri_c, odstupanje_raspodele, perplexity, autoregresivno
 
 draft  = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-0.5B").eval()
-target = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-1.5B").eval()
+target = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-1.5B").eval() #bice 14B ovo je fora
 gemma = 5  # parametar sto predstavlja broj tokena koji draft generise 
 
 MAX_NOVIH = 128        # koliko tokena generisati po prefiksu
@@ -22,7 +22,7 @@ MERI_BASELINE = True   # obicno dekodiranje radi izmerenog ubrzanja (duplira vre
 def speculativni_korak(ids, draft_cache, target_cache):
 
     #logiti ucitavanja i lista tokena
-    L = ids.shape[1]
+    pocetna_duzina = ids.shape[1]
     prosireni = ids
     q_lista = []
     x_lista = []
@@ -38,7 +38,6 @@ def speculativni_korak(ids, draft_cache, target_cache):
             x_lista.append(x)
             prosireni = torch.cat([prosireni, torch.tensor([[x]], dtype=ids.dtype, device=ids.device)], dim=1)
 
-        # target vidi nevidjeni deo; posle prve iteracije to je tacno gemma+1 pozicija
         novi = prosireni[:, target_cache.get_seq_length():]
         izlaz = target(novi, past_key_values=target_cache, use_cache=True)
         target_cache = izlaz.past_key_values
@@ -67,10 +66,10 @@ def speculativni_korak(ids, draft_cache, target_cache):
         [ids, torch.tensor([prihvaceni + [sledeci]], dtype=ids.dtype, device=ids.device)], dim=1
     )
 
-    # odbaceni tokeni su vec upisani u oba cache-a - moraju se ukloniti,
+    # odbaceni tokeni su vec upisani u oba cache-a,
     # inace sledeca iteracija racuna paznju nad tokenima kojih vise nema
     for cache in (draft_cache, target_cache):
-        visak = cache.get_seq_length() - (L + n)
+        visak = cache.get_seq_length() - (pocetna_duzina + n)
         if visak > 0:
             cache.crop(-visak)
 
@@ -85,7 +84,7 @@ if __name__ == "__main__":
     m = Merenja(gemma)
 
     prvi = prefiksi[0]
-    if prvi.dim() == 1:
+    if prvi.dim() != 2:
         prvi = prvi.unsqueeze(0)
     c, t_draft, t_target = izmeri_c(draft, target, prvi)
 
@@ -94,7 +93,7 @@ if __name__ == "__main__":
 
     for idx in range(koliko):
         ids = prefiksi[idx]
-        if ids.dim() == 1:
+        if ids.dim() != 2:
             ids = ids.unsqueeze(0)
         pocetna_duzina = ids.shape[1]
         draft_cache = DynamicCache()
@@ -110,7 +109,7 @@ if __name__ == "__main__":
 
         if MERI_BASELINE:
             osnova = prefiksi[idx]
-            if osnova.dim() == 1:
+            if osnova.dim() != 2:
                 osnova = osnova.unsqueeze(0)
             t0 = time.perf_counter()
             autoregresivno(target, osnova, MAX_NOVIH)

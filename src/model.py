@@ -35,7 +35,7 @@ def load_student():
     if _student is None:
         _student = AutoModelForCausalLM.from_pretrained(
             student_path,
-            dtype=torch.bfloat16,
+            dtype=torch.bfloat16, # zameniti sa float32 ako se trenira, bfloat16 je za inference
             device_map="cuda:0",
         )
     return _student
