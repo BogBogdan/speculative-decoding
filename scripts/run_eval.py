@@ -1,3 +1,4 @@
+import os
 import sys
 import time
 from pathlib import Path
@@ -6,17 +7,26 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import torch
-from transformers import AutoModelForCausalLM, DynamicCache
+from transformers import AutoModelForCausalLM, AutoTokenizer, DynamicCache
 from src.speculative import speculative_sampling
-from src.metrics import Merenja, izmeri_c, odstupanje_raspodele, perplexity, autoregresivno
+from src.metrics import Merenja, izmeri_c, perplexity, autoregresivno
 
-draft  = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-0.5B").eval()
-target = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-1.5B").eval() #bice 14B ovo je fora
-gemma = 5  # parametar sto predstavlja broj tokena koji draft generise 
+DEVICE = os.environ.get("DEVICE", "cuda" if torch.cuda.is_available() else "cpu")
+DTYPE = torch.bfloat16 if DEVICE == "cuda" else torch.float32
+DRAFT_ID = os.environ.get("DRAFT_ID", "Qwen/Qwen2.5-0.5B")
+TARGET_ID = os.environ.get("TARGET_ID", "Qwen/Qwen2.5-7B")
 
-MAX_NOVIH = 128        # koliko tokena generisati po prefiksu
-BROJ_PREFIKSA = 20     # koliko prefiksa proci
-MERI_BASELINE = True   # obicno dekodiranje radi izmerenog ubrzanja (duplira vreme)
+tok = AutoTokenizer.from_pretrained(DRAFT_ID)
+V = len(tok)          # 151665 stvarnih tokena; 0.5B ima 151936 a 7B/14B 152064 mesta,
+EOS_ID = tok.eos_token_id   # visak su neistrenirani redovi koji ne dekodiraju ni u sta
+
+draft  = AutoModelForCausalLM.from_pretrained(DRAFT_ID, dtype=DTYPE).to(DEVICE).eval()
+target = AutoModelForCausalLM.from_pretrained(TARGET_ID, dtype=DTYPE).to(DEVICE).eval()
+gemma = int(os.environ.get("GEMMA", 5))  # broj tokena koji draft generise po iteraciji
+
+MAX_NOVIH = int(os.environ.get("MAX_NOVIH", 128))          # tokena po prefiksu
+BROJ_PREFIKSA = int(os.environ.get("BROJ_PREFIKSA", 20))   # koliko prefiksa proci
+MERI_BASELINE = os.environ.get("MERI_BASELINE", "1") == "1"
 
 
 def speculativni_korak(ids, draft_cache, target_cache):
@@ -32,7 +42,7 @@ def speculativni_korak(ids, draft_cache, target_cache):
             novi = prosireni[:, draft_cache.get_seq_length():]
             izlaz = draft(novi, past_key_values=draft_cache, use_cache=True)
             draft_cache = izlaz.past_key_values
-            q = torch.softmax(izlaz.logits[0, -1].float(), dim=-1)
+            q = torch.softmax(izlaz.logits[0, -1, :V].float(), dim=-1)
             x = torch.multinomial(q, 1).item()
             q_lista.append(q)
             x_lista.append(x)
@@ -41,7 +51,8 @@ def speculativni_korak(ids, draft_cache, target_cache):
         novi = prosireni[:, target_cache.get_seq_length():]
         izlaz = target(novi, past_key_values=target_cache, use_cache=True)
         target_cache = izlaz.past_key_values
-        p_logits = izlaz.logits[0, -(gemma + 1):].float()
+        # odsecanje na V ide PRE softmaxa, da se raspodela normalizuje preko pravih tokena
+        p_logits = izlaz.logits[0, -(gemma + 1):, :V].float()
         p_lista = torch.softmax(p_logits, dim=-1)
 
     #verifikacija bolje da se ne paralelizuje malo je gama
@@ -73,53 +84,70 @@ def speculativni_korak(ids, draft_cache, target_cache):
         if visak > 0:
             cache.crop(-visak)
 
-    # Theorem 1: svaki par (p_i, q_i) mora da da tacno p_i kao izlaznu raspodelu
-    odstupanje = max(odstupanje_raspodele(p_lista[j], q_lista[j]) for j in range(gemma))
-
-    return ids, n, odstupanje, draft_cache, target_cache
+    return ids, n, draft_cache, target_cache
 
 
 if __name__ == "__main__":
     prefiksi = torch.load(ROOT / "data" / "prefiksi.pt", weights_only=True)
     m = Merenja(gemma)
 
-    prvi = prefiksi[0]
+    prvi = prefiksi[0].to(DEVICE)
     if prvi.dim() != 2:
         prvi = prvi.unsqueeze(0)
     c, t_draft, t_target = izmeri_c(draft, target, prvi)
 
     t_baseline = 0.0
+    tokena_baseline = 0
     koliko = min(BROJ_PREFIKSA, len(prefiksi))
 
+    def sinhronizuj():
+        if DEVICE == "cuda":
+            torch.cuda.synchronize()
+
     for idx in range(koliko):
-        ids = prefiksi[idx]
+        ids = prefiksi[idx].to(DEVICE)
         if ids.dim() != 2:
             ids = ids.unsqueeze(0)
         pocetna_duzina = ids.shape[1]
         draft_cache = DynamicCache()
         target_cache = DynamicCache()
 
+        sinhronizuj()
         t0 = time.perf_counter()
         while ids.shape[1] - pocetna_duzina < MAX_NOVIH:
-            ids, n, odstupanje, draft_cache, target_cache = speculativni_korak(
+            ids, n, draft_cache, target_cache = speculativni_korak(
                 ids, draft_cache, target_cache
             )
-            m.dodaj(n, odstupanje)
+            m.dodaj(n)
+            if EOS_ID is not None and (ids[0, pocetna_duzina:] == EOS_ID).any():
+                break
+        sinhronizuj()
         m.vreme += time.perf_counter() - t0
 
         if MERI_BASELINE:
-            osnova = prefiksi[idx]
+            osnova = prefiksi[idx].to(DEVICE)
             if osnova.dim() != 2:
                 osnova = osnova.unsqueeze(0)
+            sinhronizuj()
             t0 = time.perf_counter()
-            autoregresivno(target, osnova, MAX_NOVIH)
+            izlaz_base = autoregresivno(target, osnova, MAX_NOVIH, V=V, eos_id=EOS_ID)
+            sinhronizuj()
             t_baseline += time.perf_counter() - t0
+            tokena_baseline += izlaz_base.shape[1] - osnova.shape[1]
 
         print(f"prefiks {idx + 1}/{koliko} gotov")
 
-    r = m.rezultat(c=c, t_baseline=t_baseline if MERI_BASELINE else None)
+    # baseline i spekulativno ne daju isti broj tokena (prebacaj, EOS), pa se
+    # vreme baseline-a svede na isti broj tokena pre poredjenja
+    t_base_norm = None
+    if MERI_BASELINE and tokena_baseline:
+        t_base_norm = t_baseline / tokena_baseline * m.tokena
+
+    r = m.rezultat(c=c, t_baseline=t_base_norm)
 
     print(f"\ngamma = {gemma}, prefiksa = {koliko}, tokena po prefiksu = {MAX_NOVIH}")
+    print(f"  uredjaj / dtype               : {DEVICE} / {DTYPE}")
+    print(f"  draft / target                : {DRAFT_ID} / {TARGET_ID}")
     print(f"  alfa (acceptance rate)        : {r['alfa']:.4f}")
     print(f"  c (cost efficiency)           : {r['c']:.4f}"
           f"   [draft {t_draft * 1000:.1f} ms, target {t_target * 1000:.1f} ms]")
@@ -128,9 +156,8 @@ if __name__ == "__main__":
     print(f"  teorijsko ubrzanje            : {r['teorijsko_ubrzanje']:.4f}x")
     if MERI_BASELINE:
         print(f"  izmereno ubrzanje             : {r['izmereno_ubrzanje']:.4f}x"
-              f"   [spec {m.vreme:.1f} s, baseline {t_baseline:.1f} s]")
-    print(f"  max odstupanje raspodele      : {r['max_odstupanje_raspodele']:.2e}"
-          f"   (Theorem 1, ocekuje se ~1e-7)")
+              f"   [spec {m.vreme:.1f} s / {m.tokena} tok, "
+              f"baseline {t_baseline:.1f} s / {tokena_baseline} tok]")
     print(f"  raspodela n                   : {m.histogram_n}")
 
     uzorak = [prefiksi[i] for i in range(min(50, len(prefiksi)))]

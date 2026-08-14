@@ -48,7 +48,9 @@ def izmereno_ubrzanje(t_baseline, t_spekulativno):
 
 
 @torch.no_grad()
-def autoregresivno(model, ids, max_novih, dijagnostika=False):
+def autoregresivno(model, ids, max_novih, V=None, eos_id=None, dijagnostika=False):
+    # V i eos_id moraju biti isti kao u spekulativnoj petlji, inace baseline
+    # uzorkuje iz druge raspodele i poredjenje brzina ne stoji
     pocetna = ids.shape[1]
     vremena = []
     cache = DynamicCache()
@@ -57,12 +59,15 @@ def autoregresivno(model, ids, max_novih, dijagnostika=False):
         t0 = time.perf_counter()
         izlaz = model(ulaz, past_key_values=cache, use_cache=True)
         cache = izlaz.past_key_values
-        p = torch.softmax(izlaz.logits[0, -1].float(), dim=-1)
+        logits = izlaz.logits[0, -1] if V is None else izlaz.logits[0, -1, :V]
+        p = torch.softmax(logits.float(), dim=-1)
         x = torch.multinomial(p, 1)
         ids = torch.cat([ids, x.unsqueeze(0)], dim=1)
         ulaz = x.unsqueeze(0)       # dalje samo novi token
         _sync(ids.device)
         vremena.append(time.perf_counter() - t0)
+        if eos_id is not None and x.item() == eos_id:
+            break
     if dijagnostika:
         return ids, {
             "poziva": len(vremena),
