@@ -1,0 +1,11 @@
+######## GAMMA=0 ########
+(EngineCore pid=11361) ERROR 08-14 12:07:00 [core.py:1349] FileNotFoundError: [Errno 2] No such file or directory: 'ninja'
+(EngineCore pid=11361) FileNotFoundError: [Errno 2] No such file or directory: 'ninja'
+    raise RuntimeError(
+RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}
+######## GAMMA=1 ########
+(EngineCore pid=11578) ERROR 08-14 12:09:47 [core.py:1349] FileNotFoundError: [Errno 2] No such file or directory: 'ninja'
+(EngineCore pid=11578) FileNotFoundError: [Errno 2] No such file or directory: 'ninja'
+    raise RuntimeError(
+RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}
+######## GAMMA=3 ########

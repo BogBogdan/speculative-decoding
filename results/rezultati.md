@@ -152,6 +152,44 @@ Pri batch 20 kartica je zasićena, pa nagađanja oduzimaju kapacitet umesto da p
 
 ---
 
+## 7b. vLLM `ngram` — draft bez modela
+
+`scripts/run_eval_vllm.py` sa `METODA=ngram`, `prompt_lookup_min=2`, `prompt_lookup_max=4`.
+Nagađanja se traže u već viđenom tekstu, bez ijednog poziva modela — dakle `c ≈ 0`.
+Instanca 2, **20 prefiksa × 128 tokena**.
+Logovi: `sirovi-logovi/n1_ngram_*.txt` (batch 1), `ng_ngram_*.txt` (batch 20).
+
+### batch 1
+
+| metoda | γ | vreme | propusnost | ubrzanje |
+|---|---|---|---|---|
+| baseline | — | 83.11 s | 30.80 tok/s | 1.000× |
+| `ngram` | 3 | 85.13 s | 30.07 tok/s | 0.976× |
+| `ngram` | 5 | 85.43 s | 29.97 tok/s | 0.973× |
+| `ngram` | 8 | 85.45 s | 29.96 tok/s | 0.973× |
+
+### batch 20
+
+| metoda | γ | propusnost | ubrzanje |
+|---|---|---|---|
+| baseline | — | 588.12 tok/s | 1.000× |
+| `ngram` | 3 | 509.75 tok/s | 0.867× |
+| `ngram` | 5 | 506.36 tok/s | 0.861× |
+| `ngram` | 8 | 506.33 tok/s | 0.861× |
+| `ngram_gpu` | 5 | 458.29 tok/s | 0.779× |
+
+**α je praktično nula.** Sva tri γ daju isti broj do treće decimale — kad povećanje broja
+nagađanja ništa ne menja, znači da se ništa ne prihvata. Prefiks je 50 tokena, model dopisuje
+128 novih, i u tako kratkom rasponu se n-grami enciklopedijske proze ne ponavljaju.
+Metoda je namenjena kodu, JSON-u i zadacima gde se ulaz prepisuje u izlaz.
+
+`suffix` metoda nije merena — traži `arctic-inference`, koji se ne gradi na ovoj mašini.
+
+Isti zaključak dao je i HF `prompt_lookup` (sekcija 6): besplatan draft ne pomaže ako nema šta da pogodi.
+Formula `c = 0 ⇒ ubrzanje = E[tokena] ≥ 1` važi samo dok je i **režija** nagađanja nula, što ovde nije.
+
+---
+
 ## 8. Provere ispravnosti
 
 Sitni nasumični modeli (2 sloja, `vocab_size=64`) na CPU-u, `scratchpad/test_alg1.py`
@@ -193,6 +231,79 @@ Pragovi za ubrzanje preko 1× pri α = 0.66:
 | 5 | 2.710 | < 0.342 |
 
 Pri `c = 0.95` čak i savršen draft (α = 1) daje najviše **1.05×** — destilacija to ne može popraviti.
+
+---
+
+## 9b. Metrike pogađanja u najboljem slučaju
+
+α je svojstvo **para modela**, ne implementacije, pa vrednost izmerena na 964 iteracije
+(`run_eval.py`, γ=5) važi i za vLLM slučaj koji je dao 1.212×.
+
+### Koliko se pogađa
+
+```
+α = 0.6620        dva od tri nagadjanja prolaze
+```
+
+### Gde staje — raspodela n
+
+| prihvaćeno n | koliko puta | udeo | teorijski `α^n(1−α)` |
+|---|---|---|---|
+| 0 | 361 | 37.4% | 33.8% |
+| 1 | 193 | 20.0% | 22.4% |
+| 2 | 126 | 13.1% | 14.8% |
+| 3 | 98 | 10.2% | 9.8% |
+| 4 | 49 | 5.1% | 6.5% |
+| 5 (svih) | 137 | 14.2% | 12.7% |
+
+Poklapa se sa geometrijskom raspodelom koju teorija predviđa.
+
+- U **37%** iteracija prvo nagađanje odmah pada — najčešći pojedinačni ishod
+- U **14%** prođe svih pet, pa se dobija i bonus token
+- Prosečno prihvaćeno: **1.68** tokena, plus jedan iz korekcije ili bonusa = **2.68**
+
+Očekivan broj uzastopnih pogodaka pre prekida, bez ograničenja γ:
+
+```
+α / (1 − α) = 0.662 / 0.338 ≈ 1.96
+```
+
+Draft pogodi oko **dva tokena zaredom** pa promaši. Zato γ=1 i γ=3 pod vLLM-om daju
+skoro isto ubrzanje (1.212× i 1.206×) — iznad tri nagađanja retko šta stigne da se iskoristi.
+
+### Razlika draft naspram target
+
+| po čemu | draft 0.5B | target 7B | odnos |
+|---|---|---|---|
+| parametri | 494 M | 7.62 G | 15.4× |
+| težine bf16 | 1.0 GB | 15.2 GB | 15.2× |
+| perplexity (isti prefiksi) | 28.46 | 15.63 | 1.82× lošiji |
+| korak, teorijski | 1.7 ms | 25.3 ms | **c = 0.067** |
+| korak, vLLM (izvedeno) | — | — | **c ≈ 0.30** |
+| korak, HF eager | 32.6 ms | 34.4 ms | **c ≈ 0.95** |
+
+### Koji od dva ograničava
+
+| poluga | trenutno | granica | koliko fali |
+|---|---|---|---|
+| α | 0.662 | 1.0 | 1.5× |
+| c | 0.30 | 0.067 | **4.5×** |
+
+**α je u redu za ovaj par modela** — 0.66 je očekivano za jaz od 15× bez ikakve destilacije,
+i ne može preći 1.0. **c je problem**: hardver dozvoljava 0.067, a dobija se 0.30, dakle
+4.5× se gubi na režiji koja nema veze sa modelima.
+
+Šta bi svaka poluga donela pri γ=5:
+
+```
+sadasnje stanje    α=0.662  c=0.30    ->  1.11x   (izmereno 1.106x)
+savrsen draft      α=1.0    c=0.30    ->  2.40x
+savrsena impl.     α=0.662  c=0.067   ->  2.03x
+oboje              α=1.0    c=0.067   ->  4.49x
+```
+
+Destilacija i optimizacija implementacije su otprilike jednako vredne pri γ=5, ali je
+`c` jedini koji se popravlja bez treniranja — i jedini gde se gubi nešto što hardver već ima.
 
 ---
 

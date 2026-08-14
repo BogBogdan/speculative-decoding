@@ -1,0 +1,23 @@
+######## BATCH1 draft_model gamma=0 ########
+  baseline (bez spekulacije)
+  vreme        : 83.11 s
+  propusnost   : 30.80 tok/s
+######## BATCH1 ngram gamma=3 ########
+  spekulativno, gamma=3
+  vreme        : 85.13 s
+  propusnost   : 30.07 tok/s
+  alfa (metrike): (nedostupno: AssertionError)
+######## BATCH1 ngram gamma=5 ########
+  spekulativno, gamma=5
+  vreme        : 85.43 s
+  propusnost   : 29.97 tok/s
+  alfa (metrike): (nedostupno: AssertionError)
+######## BATCH1 ngram gamma=8 ########
+  spekulativno, gamma=8
+  vreme        : 85.45 s
+  propusnost   : 29.96 tok/s
+  alfa (metrike): (nedostupno: AssertionError)
+######## BATCH1 suffix gamma=5 ########
+    raise ImportError(
+ImportError: Arctic Inference is required for suffix decoding. Install via `pip install arctic-inference==0.1.1`.
+GOTOVO_NGRAM_B1

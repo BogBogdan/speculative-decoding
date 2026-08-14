@@ -19,14 +19,12 @@ LR = 5e-4
 STEPS = 200
 
 
-def kd_loss(student_logits, topk_logits, topk_indices):
-    teacher_logp = F.log_softmax(topk_logits.float(), dim=-1)
-    student_logp = F.log_softmax(student_logits, dim=-1, dtype=torch.float32).gather(-1, topk_indices.long())
-    return -(teacher_logp.exp() * student_logp).sum(-1).mean()
+# ista funkcija kao u treningu, da provera odrazava stvarne uslove
+from train import kd_loss, maska_validnih
 
 
 def main():
-    student = load_student().float()
+    student = load_student(dtype=torch.float32)   # isti uslovi kao u train.py
     student.train()
     device = next(student.parameters()).device
 
@@ -39,15 +37,24 @@ def main():
     topk_indices = batch["topk_indices"].to(device)
     input_ids = generated_ids[:, :-1]
 
+    # maska mora i ovde: EOS dopuna ima skoro nultu entropiju, pa bi pod
+    # ispao lazno nizak i provera bi bila neupotrebljiva
+    eos_id = load_tokenizer().eos_token_id
+    maska = maska_validnih(generated_ids, eos_id, GEN_LEN)
+    print(f"vazecih pozicija: {int(maska.sum())} / {maska.numel()}"
+          f"  ({100 * maska.mean().item():.1f}%)")
+
     teacher_logp = F.log_softmax(topk_logits.float(), dim=-1)
-    entropy_floor = -(teacher_logp.exp() * teacher_logp).sum(-1).mean().item()
-    print("entropy floor for this batch:", entropy_floor)
+    po_poziciji = -(teacher_logp.exp() * teacher_logp).sum(-1)
+    entropy_floor = (po_poziciji * maska).sum().item() / maska.sum().clamp(min=1).item()
+    print(f"entropy floor for this batch: {entropy_floor:.4f}")
+    print("   gubitak treba da se zaustavi TU, ne da padne ka nuli\n")
 
     optimizer = torch.optim.Adam(student.parameters(), lr=LR)
 
     for step in range(STEPS):
         student_logits = student(input_ids, logits_to_keep=GEN_LEN, use_cache=False).logits
-        loss = kd_loss(student_logits, topk_logits, topk_indices)
+        loss = kd_loss(student_logits, topk_logits, topk_indices, maska)
 
         optimizer.zero_grad()
         loss.backward()

@@ -20,13 +20,39 @@ GEN_LEN = 256
 DATA_DIR = "/home/mls07/data"
 OUTPUT_DIR = "/home/mls07/data/draft-distilled"
 
-def kd_loss(student_logits, topk_logits, topk_indices):
-    teacher_logp = F.log_softmax(topk_logits.float(), dim=-1)
-    student_logp = F.log_softmax(student_logits, dim=-1, dtype=torch.float32).gather(-1, topk_indices.long())
-    return -(teacher_logp.exp() * student_logp).sum(-1).mean()
+def kd_loss(student_logits, topk_logits, topk_indices, maska=None):
+    """Top-k destilacija: -suma_k p_ucitelj(k) * log q_student(k).
+
+    Uciteljev recnik je siri od studentovog - Qwen2.5-14B ima vocab_size 152064,
+    a 0.5B 151936. Indeksi preko studentove sirine se izbacuju iz uciteljeve
+    raspodele; bez toga gather cita van granica tenzora, sto na CUDA-i ne puca
+    nego vrati smece i pokvari gradijente.
+    """
+    V = student_logits.shape[-1]
+    vazi = topk_indices < V
+    idx = topk_indices.long().clamp(max=V - 1)          # da gather ostane u granicama
+
+    # -inf na nevazecim mestima -> teacher_p tamo je 0, pa ne doprinose gubitku
+    teacher_p = torch.softmax(topk_logits.float().masked_fill(~vazi, float("-inf")), dim=-1)
+    student_logp = F.log_softmax(student_logits, dim=-1, dtype=torch.float32).gather(-1, idx)
+
+    po_poziciji = -(teacher_p * student_logp).sum(-1)   # [B, GEN_LEN]
+    if maska is None:
+        return po_poziciji.mean()
+    return (po_poziciji * maska).sum() / maska.sum().clamp(min=1)
+
+
+def maska_validnih(generated_ids, eos_id, gen_len):
+    """Kad generate zavrsi ranije na EOS-u, ostatak sekvence dopuni EOS tokenima.
+    Ti ciljevi nisu pravi tekst - student bi naucio da uvek izbacuje EOS.
+    Zadrzava se prvi EOS (njega treba nauciti), sve posle njega se izbacuje.
+    """
+    ciljevi = generated_ids[:, -gen_len:]
+    je_eos = (ciljevi == eos_id).long()
+    return (je_eos.cumsum(-1) <= 1).float()
 
 @torch.no_grad()
-def evaluate(student, loader, device):
+def evaluate(student, loader, device, eos_id):
     student.eval()
     total_loss, total_batches = 0.0, 0
     for batch in loader:
@@ -36,7 +62,8 @@ def evaluate(student, loader, device):
 
         input_ids = generated_ids[:, :-1]
         student_logits = student(input_ids, logits_to_keep=GEN_LEN, use_cache=False).logits
-        total_loss += kd_loss(student_logits, topk_logits, topk_indices).item()
+        maska = maska_validnih(generated_ids, eos_id, GEN_LEN)
+        total_loss += kd_loss(student_logits, topk_logits, topk_indices, maska).item()
         total_batches += 1
 
     student.train()
@@ -56,7 +83,8 @@ def plot_losses(train_steps, train_losses, val_steps, val_losses, out_path):
 
 def main():
     tokenizer = load_tokenizer()
-    student = load_student().float()
+    eos_id = tokenizer.eos_token_id
+    student = load_student(dtype=torch.float32)   # trening u fp32, ne bf16 pa .float()
     student.train()
     device = next(student.parameters()).device
 
@@ -70,7 +98,9 @@ def main():
     loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=4, shuffle=False)
 
-    optimizer = torch.optim.Adam(student.parameters(), lr=5e-4)
+    # 5e-4 je vrednost iz overfit_check.py, gde je namerno visoka da bi jedan batch
+    # brzo pao. Za pun trening 0.5B modela to je 10x previse i vodi u kolaps.
+    optimizer = torch.optim.Adam(student.parameters(), lr=5e-5)
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     plot_path = os.path.join(OUTPUT_DIR, "loss_curve.png")
@@ -78,8 +108,11 @@ def main():
     val_steps, val_losses = [], []
 
     step = 0
-    optimizer.zero_grad()
+    running_loss = 0.0
     for epoch in range(10):
+        # cisti gradijent na pocetku svake epohe: ako len(loader) nije deljivo sa 8,
+        # zaostatak poslednje grupe bi se prelio u prvi korak sledece epohe
+        optimizer.zero_grad()
         for i, batch in enumerate(loader):
             generated_ids = batch["generated_ids"].to(device)
             topk_logits = batch["topk_logits"].to(device)
@@ -87,8 +120,12 @@ def main():
             input_ids = generated_ids[:, :-1]
             student_logits = student(input_ids, logits_to_keep=GEN_LEN, use_cache=False).logits
 
-            loss = kd_loss(student_logits, topk_logits, topk_indices)
+            maska = maska_validnih(generated_ids, eos_id, GEN_LEN)
+            loss = kd_loss(student_logits, topk_logits, topk_indices, maska)
             (loss / 8).backward()
+            # gubitak se sabira kao i gradijent, da kriva prikaze prosek grupe a ne
+            # samo poslednji mikro-batch
+            running_loss += loss.detach() / 8
 
             if (i + 1) % 8 != 0:
                 continue
@@ -99,12 +136,13 @@ def main():
 
             step += 1
             train_steps.append(step)
-            train_losses.append(loss.item())
+            train_losses.append(running_loss.item())
+            running_loss = 0.0
             if step % 10 == 0:
-                print(f"epoch {epoch} step {step} loss {loss.item():.4f}")
+                print(f"epoch {epoch} step {step} loss {train_losses[-1]:.4f}")
 
             if step % 10 == 0:
-                val_loss = evaluate(student, val_loader, device)
+                val_loss = evaluate(student, val_loader, device, eos_id)
                 val_steps.append(step)
                 val_losses.append(val_loss)
                 print(f"epoch {epoch} step {step} val_loss {val_loss:.4f}")

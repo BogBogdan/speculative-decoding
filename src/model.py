@@ -30,12 +30,17 @@ def load_teacher():
     return _teacher
 
 
-def load_student():
+def load_student(dtype=torch.bfloat16):
+    """dtype=torch.float32 za trening, bfloat16 za inferencu.
+
+    Ucitavanje u bf16 pa .float() posle NE vraca preciznost - tezine su vec
+    zaokruzene na 7 bita mantise. Za trening ucitaj direktno u fp32.
+    """
     global _student
     if _student is None:
         _student = AutoModelForCausalLM.from_pretrained(
             student_path,
-            dtype=torch.bfloat16, # zameniti sa float32 ako se trenira, bfloat16 je za inference
+            dtype=dtype,
             device_map="cuda:0",
         )
     return _student

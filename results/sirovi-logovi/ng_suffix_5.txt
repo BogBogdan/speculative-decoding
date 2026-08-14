@@ -1,0 +1,35 @@
+INFO 08-14 14:04:03 [api_utils.py:273] non-default args: {'dtype': 'bfloat16', 'max_model_len': 1024, 'gpu_memory_utilization': 0.85, 'disable_log_stats': True, 'speculative_config': {'method': 'suffix', 'num_speculative_tokens': 5}, 'model': '/home/ubuntu/target-151665'}
+INFO 08-14 14:04:03 [model.py:645] Resolved architecture: Qwen2ForCausalLM
+INFO 08-14 14:04:03 [model.py:1883] Using max model len 1024
+Traceback (most recent call last):
+  File "/home/ubuntu/speculative-decoding/scripts/run_eval_vllm.py", line 90, in <module>
+    llm = napravi_llm()
+  File "/home/ubuntu/speculative-decoding/scripts/run_eval_vllm.py", line 65, in napravi_llm
+    return LLM(speculative_config=spec, **kw)
+  File "/home/ubuntu/venv-vllm/lib/python3.14/site-packages/vllm/entrypoints/llm.py", line 339, in __init__
+    self.llm_engine = LLMEngine.from_engine_args(
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        engine_args=engine_args, usage_context=UsageContext.LLM_CLASS
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/ubuntu/venv-vllm/lib/python3.14/site-packages/vllm/v1/engine/llm_engine.py", line 171, in from_engine_args
+    vllm_config = engine_args.create_engine_config(usage_context)
+  File "/home/ubuntu/venv-vllm/lib/python3.14/site-packages/vllm/engine/arg_utils.py", line 2248, in create_engine_config
+    speculative_config = self.create_speculative_config(
+        target_model_config=model_config,
+        target_parallel_config=parallel_config,
+    )
+  File "/home/ubuntu/venv-vllm/lib/python3.14/site-packages/vllm/engine/arg_utils.py", line 1829, in create_speculative_config
+    return SpeculativeConfig(**self.speculative_config)
+  File "/home/ubuntu/venv-vllm/lib/python3.14/site-packages/pydantic/_internal/_dataclasses.py", line 121, in __init__
+    s.__pydantic_validator__.validate_python(ArgsKwargs(args, kwargs), self_instance=s)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv-vllm/lib/python3.14/site-packages/vllm/config/speculative.py", line 782, in __post_init__
+    self._validate_suffix_decoding()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/ubuntu/venv-vllm/lib/python3.14/site-packages/vllm/config/speculative.py", line 1085, in _validate_suffix_decoding
+    raise ImportError(
+    ...<2 lines>...
+    )
+ImportError: Arctic Inference is required for suffix decoding. Install via `pip install arctic-inference==0.1.1`.

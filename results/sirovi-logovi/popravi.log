@@ -1,0 +1,16 @@
+### 1. CUDA toolkit (nvcc) ###
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+/usr/bin/nvcc
+Cuda compilation tools, release 12.4, V12.4.131
+Build cuda_12.4.r12.4/compiler.34097967_0
+### 2. draft sa istim vocab_size kao target ###
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights:  26%|██▌       | 75/290 [00:00<00:00, 746.64it/s]Loading weights:  53%|█████▎    | 154/290 [00:00<00:00, 759.38it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 957.79it/s]
+[transformers] The new embeddings will be initialized from a multivariate normal distribution that has old embeddings' mean and covariance. As described in this article: https://nlp.stanford.edu/~johnhew/vocab-expansion.html. To disable this, use `mean_resizing=False`
+draft pre : 151936 -> cilj: 152064
+draft posle: 152064
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:04<00:00,  4.22s/it]Writing model shards: 100%|██████████| 1/1 [00:04<00:00,  4.22s/it]
+954M	/home/ubuntu/qwen05b-pad
+/dev/root       145G   56G   90G  39% /
+GOTOVO_POPRAVKA
