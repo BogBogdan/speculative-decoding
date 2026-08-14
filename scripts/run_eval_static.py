@@ -1,12 +1,4 @@
-"""Varijanta run_eval.py sa StaticCache, radi torch.compile(mode="reduce-overhead").
 
-Razlike u odnosu na run_eval.py:
-  - StaticCache umesto DynamicCache (fiksni baferi -> CUDA grafovi mogu da rade)
-  - rollback preko cumulative_length.fill_(), jer StaticCache nema crop
-  - odsecanje logita na len(tokenizer), jer 0.5B ima 151936 a 7B/14B 152064
-  - modeli u bf16 na GPU
-Parametri se zadaju preko env promenljivih, vidi dole.
-"""
 import os
 import sys
 import time
@@ -60,10 +52,17 @@ def vrati_na(kes, duzina):
             sloj.cumulative_length = duzina
 
 
+_MARK = getattr(torch.compiler, "cudagraph_mark_step_begin", None)
+
+
 def pozovi(model, kes, prosireni, vidjeno):
     """Posalji modelu samo ono sto jos nije video. Vraca (logits, nova_duzina)."""
     novi = prosireni[:, vidjeno:]
     pozicije = torch.arange(vidjeno, prosireni.shape[1], device=prosireni.device)
+    # CUDA grafovi recikliraju izlazni bafer; bez ovoga sledeci poziv prepise
+    # q raspodele koje cuvamo do verifikacije
+    if COMPILE and _MARK is not None:
+        _MARK()
     izlaz = model(novi, past_key_values=kes, use_cache=True, cache_position=pozicije)
     return izlaz.logits, prosireni.shape[1]
 
@@ -78,16 +77,17 @@ def speculativni_korak(ids, draft_kes, target_kes, d_len, t_len):
         # draft: gamma nagadjanja, posle prve iteracije uvek po 1 token
         for _ in range(gemma):
             logits, d_len = pozovi(draft, draft_kes, prosireni, d_len)
-            q = torch.softmax(logits[0, -1, :V].float(), dim=-1)
+            # clone jer se ovo cuva kroz sledece pozive modela
+            q = torch.softmax(logits[0, -1, :V].float(), dim=-1).clone()
             x = torch.multinomial(q, 1).item()
             q_lista.append(q)
             x_lista.append(x)
             prosireni = torch.cat(
                 [prosireni, torch.tensor([[x]], dtype=ids.dtype, device=ids.device)], dim=1)
 
-        # target: jedan poziv, posle prve iteracije uvek tacno gemma+1 pozicija
+        # target: jedan poziv, posle prve iteracije uvek tacno gemmjea+1 pozicija
         logits, t_len = pozovi(target, target_kes, prosireni, t_len)
-        p_lista = torch.softmax(logits[0, -(gemma + 1):, :V].float(), dim=-1)
+        p_lista = torch.softmax(logits[0, -(gemma + 1):, :V].float(), dim=-1).clone()
 
     # verifikacija
     n = gemma

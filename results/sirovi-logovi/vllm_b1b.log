@@ -1,0 +1,53 @@
+######## BATCH 1, GAMMA=0 ########
+==============================================================
+INFO 08-14 12:49:54 [utils.py:612] [shutdown] Process manager: send sigterm to process EngineCore
+(EngineCore pid=14477) INFO 08-14 12:49:54 [core.py:1332] [shutdown] EngineCore: trigger received signal=SIGTERM
+(EngineCore pid=14477) INFO 08-14 12:49:54 [core.py:1468] [shutdown] EngineCore: start mode=abort timeout=0s
+(EngineCore pid=14477) INFO 08-14 12:49:54 [core.py:1499] [shutdown] EngineCore: request processing complete; starting resource teardown
+(EngineCore pid=14477) INFO 08-14 12:49:54 [core.py:1345] [shutdown] EngineCore: exiting busy loop
+WARNING 08-14 12:49:55 [core_client.py:725] [shutdown] MPClient: engine core exited unexpectedly; starting cleanup
+INFO 08-14 12:49:55 [core_client.py:686] [shutdown] MPClient: start timeout=default
+INFO 08-14 12:49:55 [core_client.py:688] [shutdown] MPClient: stopping engine manager
+INFO 08-14 12:49:55 [core_client.py:690] [shutdown] MPClient: engine manager stopped
+INFO 08-14 12:49:55 [core_client.py:691] [shutdown] MPClient: cleaning up background resources
+INFO 08-14 12:49:55 [core_client.py:693] [shutdown] MPClient: complete
+######## BATCH 1, GAMMA=1 ########
+==============================================================
+INFO 08-14 12:53:50 [utils.py:612] [shutdown] Process manager: send sigterm to process EngineCore
+(EngineCore pid=14709) INFO 08-14 12:53:50 [core.py:1332] [shutdown] EngineCore: trigger received signal=SIGTERM
+(EngineCore pid=14709) INFO 08-14 12:53:50 [core.py:1468] [shutdown] EngineCore: start mode=abort timeout=0s
+(EngineCore pid=14709) INFO 08-14 12:53:50 [core.py:1499] [shutdown] EngineCore: request processing complete; starting resource teardown
+(EngineCore pid=14709) INFO 08-14 12:53:50 [core.py:1345] [shutdown] EngineCore: exiting busy loop
+WARNING 08-14 12:53:52 [core_client.py:725] [shutdown] MPClient: engine core exited unexpectedly; starting cleanup
+INFO 08-14 12:53:52 [core_client.py:686] [shutdown] MPClient: start timeout=default
+INFO 08-14 12:53:52 [core_client.py:688] [shutdown] MPClient: stopping engine manager
+INFO 08-14 12:53:52 [core_client.py:690] [shutdown] MPClient: engine manager stopped
+INFO 08-14 12:53:52 [core_client.py:691] [shutdown] MPClient: cleaning up background resources
+INFO 08-14 12:53:52 [core_client.py:693] [shutdown] MPClient: complete
+######## BATCH 1, GAMMA=3 ########
+==============================================================
+INFO 08-14 12:58:02 [utils.py:612] [shutdown] Process manager: send sigterm to process EngineCore
+(EngineCore pid=14896) INFO 08-14 12:58:02 [core.py:1332] [shutdown] EngineCore: trigger received signal=SIGTERM
+(EngineCore pid=14896) INFO 08-14 12:58:02 [core.py:1468] [shutdown] EngineCore: start mode=abort timeout=0s
+(EngineCore pid=14896) INFO 08-14 12:58:02 [core.py:1499] [shutdown] EngineCore: request processing complete; starting resource teardown
+(EngineCore pid=14896) INFO 08-14 12:58:02 [core.py:1345] [shutdown] EngineCore: exiting busy loop
+WARNING 08-14 12:58:03 [core_client.py:725] [shutdown] MPClient: engine core exited unexpectedly; starting cleanup
+INFO 08-14 12:58:03 [core_client.py:686] [shutdown] MPClient: start timeout=default
+INFO 08-14 12:58:03 [core_client.py:688] [shutdown] MPClient: stopping engine manager
+INFO 08-14 12:58:03 [core_client.py:690] [shutdown] MPClient: engine manager stopped
+INFO 08-14 12:58:03 [core_client.py:691] [shutdown] MPClient: cleaning up background resources
+INFO 08-14 12:58:03 [core_client.py:693] [shutdown] MPClient: complete
+######## BATCH 1, GAMMA=5 ########
+==============================================================
+INFO 08-14 13:01:47 [utils.py:612] [shutdown] Process manager: send sigterm to process EngineCore
+(EngineCore pid=15134) INFO 08-14 13:01:48 [core.py:1332] [shutdown] EngineCore: trigger received signal=SIGTERM
+(EngineCore pid=15134) INFO 08-14 13:01:48 [core.py:1468] [shutdown] EngineCore: start mode=abort timeout=0s
+(EngineCore pid=15134) INFO 08-14 13:01:48 [core.py:1499] [shutdown] EngineCore: request processing complete; starting resource teardown
+(EngineCore pid=15134) INFO 08-14 13:01:48 [core.py:1345] [shutdown] EngineCore: exiting busy loop
+WARNING 08-14 13:01:49 [core_client.py:725] [shutdown] MPClient: engine core exited unexpectedly; starting cleanup
+INFO 08-14 13:01:49 [core_client.py:686] [shutdown] MPClient: start timeout=default
+INFO 08-14 13:01:49 [core_client.py:688] [shutdown] MPClient: stopping engine manager
+INFO 08-14 13:01:49 [core_client.py:690] [shutdown] MPClient: engine manager stopped
+INFO 08-14 13:01:49 [core_client.py:691] [shutdown] MPClient: cleaning up background resources
+INFO 08-14 13:01:49 [core_client.py:693] [shutdown] MPClient: complete
+GOTOVO_B1B

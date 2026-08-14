@@ -1,0 +1,30 @@
+######## GAMMA=0 ########
+  baseline (bez spekulacije)
+  vreme        : 4.69 s
+  tokena       : 2560
+  propusnost   : 545.87 tok/s
+######## GAMMA=1 ########
+  spekulativno, gamma=1
+  vreme        : 4.35 s
+  tokena       : 2560
+  propusnost   : 589.06 tok/s
+  alfa (metrike): (nedostupno: AssertionError)
+######## GAMMA=3 ########
+  spekulativno, gamma=3
+  vreme        : 5.75 s
+  tokena       : 2560
+  propusnost   : 445.11 tok/s
+  alfa (metrike): (nedostupno: AssertionError)
+######## GAMMA=5 ########
+  spekulativno, gamma=5
+  vreme        : 6.23 s
+  tokena       : 2560
+  propusnost   : 410.97 tok/s
+  alfa (metrike): (nedostupno: AssertionError)
+######## GAMMA=8 ########
+  spekulativno, gamma=8
+  vreme        : 8.38 s
+  tokena       : 2560
+  propusnost   : 305.40 tok/s
+  alfa (metrike): (nedostupno: AssertionError)
+GOTOVO_VLLM4

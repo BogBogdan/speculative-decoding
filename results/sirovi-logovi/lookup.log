@@ -1,0 +1,8 @@
+### vLLM zavrsen, prelazim na prompt lookup ###
+obicno generate              89.72 s   2560 tok   28.53 tok/s
+prompt lookup, gamma=2       94.72 s   2560 tok   27.03 tok/s   ubrzanje 0.947x
+prompt lookup, gamma=3       92.73 s   2560 tok   27.61 tok/s   ubrzanje 0.967x
+prompt lookup, gamma=5       94.29 s   2560 tok   27.15 tok/s   ubrzanje 0.952x
+prompt lookup, gamma=8       96.08 s   2560 tok   26.64 tok/s   ubrzanje 0.934x
+prompt lookup, gamma=10      96.58 s   2560 tok   26.51 tok/s   ubrzanje 0.929x
+GOTOVO_LOOKUP

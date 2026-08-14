@@ -1,0 +1,23 @@
+######## gamma=1 | DynamicCache, bez compile (referenca) ########
+  alfa (acceptance rate)        : 0.5891
+  c (cost efficiency)           : 1.1246   [draft 39.3 ms, target 34.9 ms]
+  tokena / poziv target modela  : 1.5891   (teorijski 1.5891)
+  teorijsko ubrzanje            : 0.7480x
+  izmereno ubrzanje             : 0.9076x   [spec 12.3 s / 321 tok, baseline 11.1 s / 320 tok]
+######## gamma=1 | StaticCache + CUDA grafovi ########
+######## gamma=1 | StaticCache, bez compile ########
+  alfa                          : 0.6131
+  tokena / poziv target modela  : 1.6131   (teorijski 1.6131)
+  izmereno ubrzanje             : 0.6715x   [spec 16.7 s, baseline 8.3 s]
+######## gamma=5 | DynamicCache, bez compile (referenca) ########
+  alfa (acceptance rate)        : 0.6369
+  c (cost efficiency)           : 1.0049   [draft 35.1 ms, target 34.9 ms]
+  tokena / poziv target modela  : 2.5385   (teorijski 2.5705)
+  teorijsko ubrzanje            : 0.4267x
+  izmereno ubrzanje             : 0.5909x   [spec 19.4 s / 330 tok, baseline 10.4 s / 298 tok]
+######## gamma=5 | StaticCache + CUDA grafovi ########
+######## gamma=5 | StaticCache, bez compile ########
+  alfa                          : 0.6154
+  tokena / poziv target modela  : 2.4222   (teorijski 2.4588)
+  izmereno ubrzanje             : 0.4372x   [spec 26.0 s, baseline 11.1 s]
+GOTOVO
