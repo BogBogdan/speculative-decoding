@@ -27,6 +27,8 @@ from vllm import LLM, SamplingParams
 DRAFT_ID = os.environ.get("DRAFT_ID", "Qwen/Qwen2.5-0.5B")
 TARGET_ID = os.environ.get("TARGET_ID", "Qwen/Qwen2.5-7B")
 GAMMA = int(os.environ.get("GAMMA", 0))          # 0 = bez spekulacije
+# draft_model = poseban model; ngram / ngram_gpu / suffix = nagadjanje iz teksta, bez modela
+METODA = os.environ.get("METODA", "draft_model")
 MAX_NOVIH = int(os.environ.get("MAX_NOVIH", 128))
 BROJ_PREFIKSA = int(os.environ.get("BROJ_PREFIKSA", 20))
 GPU_UTIL = float(os.environ.get("GPU_UTIL", 0.85))
@@ -46,14 +48,23 @@ def ucitaj_prefikse():
 def napravi_llm():
     kw = dict(model=TARGET_ID, dtype="bfloat16", gpu_memory_utilization=GPU_UTIL,
               max_model_len=1024, seed=SEED, enforce_eager=False)
-    if GAMMA > 0:
-        # noviji vLLM: speculative_config; stariji: speculative_model / num_speculative_tokens
-        try:
-            return LLM(speculative_config={"model": DRAFT_ID,
-                                           "num_speculative_tokens": GAMMA}, **kw)
-        except TypeError:
-            return LLM(speculative_model=DRAFT_ID, num_speculative_tokens=GAMMA, **kw)
-    return LLM(**kw)
+    if GAMMA == 0:
+        return LLM(**kw)
+
+    if METODA in ("ngram", "ngram_gpu"):
+        # nagadja se iz vec vidjenog teksta, bez ijednog poziva modela -> c ~ 0
+        spec = {"method": METODA, "num_speculative_tokens": GAMMA,
+                "prompt_lookup_max": int(os.environ.get("LOOKUP_MAX", 4)),
+                "prompt_lookup_min": int(os.environ.get("LOOKUP_MIN", 2))}
+    elif METODA == "suffix":
+        spec = {"method": "suffix", "num_speculative_tokens": GAMMA}
+    else:
+        spec = {"model": DRAFT_ID, "num_speculative_tokens": GAMMA}
+
+    try:
+        return LLM(speculative_config=spec, **kw)
+    except TypeError:
+        return LLM(speculative_model=DRAFT_ID, num_speculative_tokens=GAMMA, **kw)
 
 
 def prijavi_alfa(llm):
@@ -88,8 +99,17 @@ if __name__ == "__main__":
                                            max_tokens=8))          # zagrevanje
     torch.cuda.synchronize()
 
+    # PO_JEDAN=1 -> batch 1, meri se kasnjenje i uporedivo je sa run_eval.py.
+    # Bez toga vLLM grupise sve prefikse i meri propusnost, gde spekulacija ne pomaze
+    # jer je kartica ionako zasicena.
+    PO_JEDAN = os.environ.get("PO_JEDAN", "0") == "1"
     t0 = time.perf_counter()
-    izlazi = llm.generate(ulazi, sp)
+    if PO_JEDAN:
+        izlazi = []
+        for u in ulazi:
+            izlazi.extend(llm.generate([u], sp))
+    else:
+        izlazi = llm.generate(ulazi, sp)
     torch.cuda.synchronize()
     trajanje = time.perf_counter() - t0
 
