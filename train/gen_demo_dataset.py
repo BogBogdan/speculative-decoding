@@ -14,6 +14,7 @@ VAZNO: GEN_LEN ovde mora da se poklopi sa GEN_LEN u train.py.
 """
 import os
 import sys
+from pathlib import Path
 
 os.environ.setdefault("USER", "aleksa")
 os.environ.setdefault("HF_HOME", "/data")
@@ -23,7 +24,7 @@ import torch
 sys.path.append("/home/mls07/speculative-decoding/src")
 from model import load_teacher, load_tokenizer
 
-PREFIKSI = os.environ.get("PREFIKSI", "data/prefiksi.pt")
+PREFIKSI = os.environ.get("PREFIKSI", str(Path(__file__).resolve().parent / "prefiksi.pt"))
 IZLAZ_DIR = os.environ.get("IZLAZ_DIR", "/home/mls07/data-demo")
 GEN_LEN = int(os.environ.get("GEN_LEN", 128))        # mora = GEN_LEN u train.py
 PO_PREFIKSU = int(os.environ.get("PO_PREFIKSU", 200))  # koliko nastavaka po prefiksu;

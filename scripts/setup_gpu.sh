@@ -50,7 +50,7 @@ python3 -m venv "$HOME/venv-vllm"
 echo "### 4. repo i prefiksi ###"
 [ -d "$REPO" ] || git clone -q https://github.com/BogBogdan/speculative-decoding.git "$REPO"
 mkdir -p "$REPO/data"
-cd "$REPO/scripts" && "$HOME/venv/bin/python" get_dataset.py
+"$HOME/venv/bin/python" "$REPO/train/get_dataset.py"
 
 echo "### 5. modeli sa izjednacenim recnikom ###"
 # Qwen2.5-0.5B ima vocab_size 151936, a 7B/14B 152064, dok tokenizer ima 151665.

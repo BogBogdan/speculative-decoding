@@ -30,13 +30,14 @@ GAMMA = int(os.environ.get("GAMMA", 0))          # 0 = bez spekulacije
 # draft_model = poseban model; ngram / ngram_gpu / suffix = nagadjanje iz teksta, bez modela
 METODA = os.environ.get("METODA", "draft_model")
 MAX_NOVIH = int(os.environ.get("MAX_NOVIH", 128))
+PREFIKSI = os.environ.get("PREFIKSI", str(ROOT / "train" / "prefiksi.pt"))
 BROJ_PREFIKSA = int(os.environ.get("BROJ_PREFIKSA", 3))
 GPU_UTIL = float(os.environ.get("GPU_UTIL", 0.85))
 SEED = int(os.environ.get("SEED", 0))
 
 
 def ucitaj_prefikse():
-    p = torch.load(ROOT / "data" / "prefiksi.pt", weights_only=True)
+    p = torch.load(PREFIKSI, weights_only=True)
     out = []
     for t in p[:BROJ_PREFIKSA]:
         if t.dim() == 2:

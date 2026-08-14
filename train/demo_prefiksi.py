@@ -4,7 +4,7 @@ Za DEMO: student je destilovan bas na uciteljevim nastavcima iz ovih tacaka,
 pa je alfa na njima najveca moguca. Na novim prefiksima efekta nece biti -
 ovo meri koliko je student zapamtio, ne koliko je naucio.
 
-Za rad koristi scripts/get_dataset.py, koji uzima wikitext TEST split.
+Za rad koristi train/get_dataset.py, koji uzima wikitext TEST split.
 
     python train/demo_prefiksi.py /home/mls07/data 50 100
                                   ^data_dir      ^koliko ^duzina
@@ -13,12 +13,14 @@ import glob
 import os
 import sys
 
+from pathlib import Path
+
 import torch
 
 DATA_DIR = sys.argv[1] if len(sys.argv) > 1 else "/home/mls07/data"
 KOLIKO = int(sys.argv[2]) if len(sys.argv) > 2 else 50
 DUZINA = int(sys.argv[3]) if len(sys.argv) > 3 else 100
-IZLAZ = os.environ.get("IZLAZ", "data/prefiksi-demo.pt")
+IZLAZ = os.environ.get("IZLAZ", str(Path(__file__).resolve().parent / "prefiksi.pt"))
 
 putanje = sorted(glob.glob(os.path.join(DATA_DIR, "batch_*.pt")))
 if not putanje:

@@ -19,6 +19,7 @@ TARGET_ID = os.environ.get("TARGET_ID", "Qwen/Qwen2.5-7B")
 
 gemma = int(os.environ.get("GEMMA", 5))
 MAX_NOVIH = int(os.environ.get("MAX_NOVIH", 128))
+PREFIKSI = os.environ.get("PREFIKSI", str(ROOT / "train" / "prefiksi.pt"))
 BROJ_PREFIKSA = int(os.environ.get("BROJ_PREFIKSA", 3))
 MERI_BASELINE = os.environ.get("MERI_BASELINE", "1") == "1"
 COMPILE = os.environ.get("COMPILE", "1") == "1"
@@ -119,7 +120,7 @@ def speculativni_korak(ids, draft_kes, target_kes, d_len, t_len):
 
 
 if __name__ == "__main__":
-    prefiksi = torch.load(ROOT / "data" / "prefiksi.pt", weights_only=True)
+    prefiksi = torch.load(PREFIKSI, weights_only=True)
     koliko = min(BROJ_PREFIKSA, len(prefiksi))
     m = Merenja(gemma)
     t_baseline = 0.0
