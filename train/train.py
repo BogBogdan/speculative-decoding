@@ -15,15 +15,18 @@ from model import load_student, load_tokenizer
 
 from dataset import DistillationDataset
 
-GEN_LEN = 256
+GEN_LEN = int(os.environ.get("GEN_LEN", 256))   # mora se poklopiti sa generatorom podataka
 
-DATA_DIR = "/home/mls07/data"
-OUTPUT_DIR = "/home/mls07/data/draft-distilled"
+DATA_DIR = os.environ.get("DATA_DIR", "/home/mls07/data")
+OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "/home/mls07/data/draft-distilled")
 
-MICRO_BATCH = 8
-ACCUM = 8                  # efektivni batch = MICRO_BATCH * ACCUM
+MICRO_BATCH = int(os.environ.get("MICRO_BATCH", 8))
+ACCUM = int(os.environ.get("ACCUM", 8))         # efektivni batch = MICRO_BATCH * ACCUM
+EPOHA = int(os.environ.get("EPOHA", 10))
+LR = float(os.environ.get("LR", 5e-5))
+VAL_UDEO = float(os.environ.get("VAL_UDEO", 0.1))
 EVAL_BATCH = 16
-EVAL_SVAKIH = 50           # optimizer koraka izmedju dve tacke na val krivoj
+EVAL_SVAKIH = int(os.environ.get("EVAL_SVAKIH", 50))  # koraka izmedju tacaka na val krivoj
 BRZI_VAL = 512             # koliko uzoraka ide u periodicni eval; pun val tek na kraju epohe
 
 def kd_po_poziciji(student_logits, topk_logits, topk_indices):
@@ -122,7 +125,7 @@ def main():
     device = next(student.parameters()).device
 
     dataset = DistillationDataset(DATA_DIR)
-    val_size = int(len(dataset) * 0.1)
+    val_size = int(len(dataset) * VAL_UDEO)
     train_size = len(dataset) - val_size
     train_dataset, val_dataset = random_split(
         dataset, [train_size, val_size], generator=torch.Generator().manual_seed(0)
@@ -139,7 +142,7 @@ def main():
 
     # 5e-4 je vrednost iz overfit_check.py, gde je namerno visoka da bi jedan batch
     # brzo pao. Za pun trening 0.5B modela to je 10x previse i vodi u kolaps.
-    optimizer = torch.optim.Adam(student.parameters(), lr=5e-5)
+    optimizer = torch.optim.Adam(student.parameters(), lr=LR)
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     plot_path = os.path.join(OUTPUT_DIR, "loss_curve.png")
@@ -148,7 +151,7 @@ def main():
 
     step = 0
     running_loss = 0.0
-    for epoch in range(10):
+    for epoch in range(EPOHA):
         # cisti gradijent na pocetku svake epohe: ako len(loader) nije deljivo sa
         # ACCUM, zaostatak poslednje grupe bi se prelio u prvi korak sledece epohe
         optimizer.zero_grad()
