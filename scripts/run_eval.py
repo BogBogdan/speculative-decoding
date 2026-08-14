@@ -25,7 +25,7 @@ target = AutoModelForCausalLM.from_pretrained(TARGET_ID, dtype=DTYPE).to(DEVICE)
 gemma = int(os.environ.get("GEMMA", 5))  # broj tokena koji draft generise po iteraciji
 
 MAX_NOVIH = int(os.environ.get("MAX_NOVIH", 128))          # tokena po prefiksu
-BROJ_PREFIKSA = int(os.environ.get("BROJ_PREFIKSA", 20))   # koliko prefiksa proci
+BROJ_PREFIKSA = int(os.environ.get("BROJ_PREFIKSA", 3))   # koliko prefiksa proci
 MERI_BASELINE = os.environ.get("MERI_BASELINE", "1") == "1"
 
 

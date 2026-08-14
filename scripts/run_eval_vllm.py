@@ -30,7 +30,7 @@ GAMMA = int(os.environ.get("GAMMA", 0))          # 0 = bez spekulacije
 # draft_model = poseban model; ngram / ngram_gpu / suffix = nagadjanje iz teksta, bez modela
 METODA = os.environ.get("METODA", "draft_model")
 MAX_NOVIH = int(os.environ.get("MAX_NOVIH", 128))
-BROJ_PREFIKSA = int(os.environ.get("BROJ_PREFIKSA", 20))
+BROJ_PREFIKSA = int(os.environ.get("BROJ_PREFIKSA", 3))
 GPU_UTIL = float(os.environ.get("GPU_UTIL", 0.85))
 SEED = int(os.environ.get("SEED", 0))
 

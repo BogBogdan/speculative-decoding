@@ -19,7 +19,7 @@ TARGET_ID = os.environ.get("TARGET_ID", "Qwen/Qwen2.5-7B")
 
 gemma = int(os.environ.get("GEMMA", 5))
 MAX_NOVIH = int(os.environ.get("MAX_NOVIH", 128))
-BROJ_PREFIKSA = int(os.environ.get("BROJ_PREFIKSA", 20))
+BROJ_PREFIKSA = int(os.environ.get("BROJ_PREFIKSA", 3))
 MERI_BASELINE = os.environ.get("MERI_BASELINE", "1") == "1"
 COMPILE = os.environ.get("COMPILE", "1") == "1"
 

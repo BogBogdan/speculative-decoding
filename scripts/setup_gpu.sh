@@ -66,7 +66,7 @@ GOTOVO. Kako se sta pokrece:
   cd ~/speculative-decoding
 
   # 1) tvoja implementacija, DynamicCache (najbolja od HF varijanti)
-  GEMMA=1 MAX_NOVIH=128 BROJ_PREFIKSA=20 MERI_BASELINE=1 \
+  GEMMA=1 MAX_NOVIH=128 BROJ_PREFIKSA=3 MERI_BASELINE=1 \
     ~/venv/bin/python scripts/run_eval.py
 
   # 2) tvoja implementacija, StaticCache (COMPILE=1 puca na transformers 5.15)

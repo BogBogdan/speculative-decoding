@@ -9,7 +9,7 @@ PY=${PY:-python}
 export TARGET_ID=${TARGET_ID:-Qwen/Qwen2.5-7B}
 export DRAFT_ID=${DRAFT_ID:-Qwen/Qwen2.5-0.5B}
 export MAX_NOVIH=${MAX_NOVIH:-128}
-export BROJ_PREFIKSA=${BROJ_PREFIKSA:-20}
+export BROJ_PREFIKSA=${BROJ_PREFIKSA:-3}
 export GPU_UTIL=${GPU_UTIL:-0.85}
 
 for G in 0 1 3 5 8; do

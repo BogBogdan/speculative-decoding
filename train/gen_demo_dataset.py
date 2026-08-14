@@ -36,6 +36,9 @@ tokenizer = load_tokenizer()
 teacher = load_teacher()
 
 prefiksi = torch.load(PREFIKSI, weights_only=True)
+KOLIKO_PREFIKSA = int(os.environ.get("KOLIKO_PREFIKSA", len(prefiksi)))
+prefiksi = prefiksi[:KOLIKO_PREFIKSA]
+
 print(f"{len(prefiksi)} prefiksa, {PO_PREFIKSU} nastavaka po prefiksu, "
       f"{GEN_LEN} tokena po nastavku")
 print(f"ukupno {len(prefiksi) * PO_PREFIKSU} sekvenci -> {IZLAZ_DIR}\n")
