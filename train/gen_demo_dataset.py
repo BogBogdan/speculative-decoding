@@ -36,8 +36,9 @@ tokenizer = load_tokenizer()
 teacher = load_teacher()
 
 prefiksi = torch.load(PREFIKSI, weights_only=True)
-KOLIKO_PREFIKSA = int(os.environ.get("KOLIKO_PREFIKSA", len(prefiksi)))
-prefiksi = prefiksi[:KOLIKO_PREFIKSA]
+# isto ime kao u eval skriptama, da se generisanje i merenje rade nad istim brojem
+BROJ_PREFIKSA = int(os.environ.get("BROJ_PREFIKSA", 3))
+prefiksi = prefiksi[:BROJ_PREFIKSA]
 
 print(f"{len(prefiksi)} prefiksa, {PO_PREFIKSU} nastavaka po prefiksu, "
       f"{GEN_LEN} tokena po nastavku")
