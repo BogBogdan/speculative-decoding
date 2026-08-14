@@ -20,6 +20,10 @@ GEN_LEN = 256
 DATA_DIR = "/home/mls07/data"
 OUTPUT_DIR = "/home/mls07/data/draft-distilled"
 
+VAL_EVERY = 200      # koraka optimizatora izmedju dve validacije
+VAL_BATCHEVA = 50    # koliko batcheva po validaciji, umesto celog val skupa
+EPOHA = 10           # spusti ako val gubitak pocne da raste rano
+
 def kd_loss(student_logits, topk_logits, topk_indices, maska=None):
     """Top-k destilacija: -suma_k p_ucitelj(k) * log q_student(k).
 
@@ -52,22 +56,31 @@ def maska_validnih(generated_ids, eos_id, gen_len):
     return (je_eos.cumsum(-1) <= 1).float()
 
 @torch.no_grad()
-def evaluate(student, loader, device, eos_id):
+def evaluate(student, loader, device, eos_id, max_batcheva=VAL_BATCHEVA):
+    """Validacija na ogranicenom broju batcheva.
+
+    Ako se prolazi kroz CEO val skup na svakih VAL_EVERY koraka, ukupna cena
+    validacije raste sa N^2 dok trening raste sa N - pa na velikom skupu
+    validacija pojede vise vremena nego sam trening.
+    """
     student.eval()
     total_loss, total_batches = 0.0, 0
     for batch in loader:
+        if total_batches >= max_batcheva:
+            break
         generated_ids = batch["generated_ids"].to(device)
         topk_logits = batch["topk_logits"].to(device)
         topk_indices = batch["topk_indices"].to(device)
 
         input_ids = generated_ids[:, :-1]
-        student_logits = student(input_ids, logits_to_keep=GEN_LEN, use_cache=False).logits
+        with torch.autocast("cuda", dtype=torch.bfloat16):
+            student_logits = student(input_ids, logits_to_keep=GEN_LEN, use_cache=False).logits
         maska = maska_validnih(generated_ids, eos_id, GEN_LEN)
         total_loss += kd_loss(student_logits, topk_logits, topk_indices, maska).item()
         total_batches += 1
 
     student.train()
-    return total_loss / total_batches
+    return total_loss / max(total_batches, 1)
 
 def plot_losses(train_steps, train_losses, val_steps, val_losses, out_path):
     plt.figure(figsize=(8, 5))
@@ -109,7 +122,7 @@ def main():
 
     step = 0
     running_loss = 0.0
-    for epoch in range(10):
+    for epoch in range(EPOHA):
         # cisti gradijent na pocetku svake epohe: ako len(loader) nije deljivo sa 8,
         # zaostatak poslednje grupe bi se prelio u prvi korak sledece epohe
         optimizer.zero_grad()
@@ -118,7 +131,12 @@ def main():
             topk_logits = batch["topk_logits"].to(device)
             topk_indices = batch["topk_indices"].to(device)
             input_ids = generated_ids[:, :-1]
-            student_logits = student(input_ids, logits_to_keep=GEN_LEN, use_cache=False).logits
+
+            # tezine ostaju fp32, mnozenja se rade u bf16 - oko 2x brze,
+            # bez gubitka preciznosti koji donosi ucitavanje modela u bf16
+            with torch.autocast("cuda", dtype=torch.bfloat16):
+                student_logits = student(input_ids, logits_to_keep=GEN_LEN,
+                                         use_cache=False).logits
 
             maska = maska_validnih(generated_ids, eos_id, GEN_LEN)
             loss = kd_loss(student_logits, topk_logits, topk_indices, maska)
@@ -141,7 +159,7 @@ def main():
             if step % 10 == 0:
                 print(f"epoch {epoch} step {step} loss {train_losses[-1]:.4f}")
 
-            if step % 10 == 0:
+            if step % VAL_EVERY == 0:
                 val_loss = evaluate(student, val_loader, device, eos_id)
                 val_steps.append(step)
                 val_losses.append(val_loss)
