@@ -5,7 +5,6 @@ os.environ["HF_HOME"] = "/data"
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
-from transformers import get_cosine_schedule_with_warmup
 
 import matplotlib
 matplotlib.use("Agg")
@@ -16,26 +15,15 @@ from model import load_student, load_tokenizer
 
 from dataset import DistillationDataset
 
-GEN_LEN = 256  # must match distilation.ipynb's GEN_LEN
+GEN_LEN = 256  
 
 DATA_DIR = "/home/mls07/data"
 OUTPUT_DIR = "/home/mls07/data/draft-distilled"
-EPOCHS = 10
-BATCH_SIZE = 4
-GRAD_ACCUM_STEPS = 8  # effective batch size stays at 32
-LR = 5e-5
-WARMUP_STEPS = 0
-LOG_EVERY = 10
-VAL_EVERY = 10  # run validation every N optimizer steps
-VAL_FRACTION = 0.1
-VAL_SPLIT_SEED = 0
-
 
 def kd_loss(student_logits, topk_logits, topk_indices):
     teacher_logp = F.log_softmax(topk_logits.float(), dim=-1)
     student_logp = F.log_softmax(student_logits, dim=-1, dtype=torch.float32).gather(-1, topk_indices.long())
     return -(teacher_logp.exp() * student_logp).sum(-1).mean()
-
 
 @torch.no_grad()
 def evaluate(student, loader, device):
@@ -54,7 +42,6 @@ def evaluate(student, loader, device):
     student.train()
     return total_loss / total_batches
 
-
 def plot_losses(train_steps, train_losses, val_steps, val_losses, out_path):
     plt.figure(figsize=(8, 5))
     plt.plot(train_steps, train_losses, label="train loss")
@@ -67,7 +54,6 @@ def plot_losses(train_steps, train_losses, val_steps, val_losses, out_path):
     plt.savefig(out_path)
     plt.close()
 
-
 def main():
     tokenizer = load_tokenizer()
     student = load_student().float()
@@ -75,19 +61,16 @@ def main():
     device = next(student.parameters()).device
 
     dataset = DistillationDataset(DATA_DIR)
-    val_size = int(len(dataset) * VAL_FRACTION)
+    val_size = int(len(dataset) * 0.1)
     train_size = len(dataset) - val_size
     train_dataset, val_dataset = random_split(
-        dataset, [train_size, val_size], generator=torch.Generator().manual_seed(VAL_SPLIT_SEED)
+        dataset, [train_size, val_size], generator=torch.Generator().manual_seed(0)
     )
 
-    loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=4, shuffle=False)
 
-    optimizer = torch.optim.Adam(student.parameters(), lr=LR)
-    steps_per_epoch = len(loader) // GRAD_ACCUM_STEPS
-    total_steps = EPOCHS * steps_per_epoch
-    scheduler = get_cosine_schedule_with_warmup(optimizer, WARMUP_STEPS, total_steps)
+    optimizer = torch.optim.Adam(student.parameters(), lr=5e-4)
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     plot_path = os.path.join(OUTPUT_DIR, "loss_curve.png")
@@ -96,7 +79,7 @@ def main():
 
     step = 0
     optimizer.zero_grad()
-    for epoch in range(EPOCHS):
+    for epoch in range(10):
         for i, batch in enumerate(loader):
             generated_ids = batch["generated_ids"].to(device)
             topk_logits = batch["topk_logits"].to(device)
@@ -105,37 +88,34 @@ def main():
             student_logits = student(input_ids, logits_to_keep=GEN_LEN, use_cache=False).logits
 
             loss = kd_loss(student_logits, topk_logits, topk_indices)
-            (loss / GRAD_ACCUM_STEPS).backward()
+            (loss / 8).backward()
 
-            if (i + 1) % GRAD_ACCUM_STEPS != 0:
+            if (i + 1) % 8 != 0:
                 continue
 
             torch.nn.utils.clip_grad_norm_(student.parameters(), max_norm=1.0)
             optimizer.step()
-            scheduler.step()
             optimizer.zero_grad()
 
             step += 1
             train_steps.append(step)
             train_losses.append(loss.item())
-            if step % LOG_EVERY == 0:
-                print(f"epoch {epoch} step {step} loss {loss.item():.4f} lr {scheduler.get_last_lr()[0]:.2e}")
+            if step % 10 == 0:
+                print(f"epoch {epoch} step {step} loss {loss.item():.4f}")
 
-            if step % VAL_EVERY == 0:
+            if step % 10 == 0:
                 val_loss = evaluate(student, val_loader, device)
                 val_steps.append(step)
                 val_losses.append(val_loss)
                 print(f"epoch {epoch} step {step} val_loss {val_loss:.4f}")
                 plot_losses(train_steps, train_losses, val_steps, val_losses, plot_path)
 
-        else:
-            epoch_dir = os.path.join(OUTPUT_DIR, f"epoch-{epoch}")
-            os.makedirs(epoch_dir, exist_ok=True)
-            student.save_pretrained(epoch_dir)
-            tokenizer.save_pretrained(epoch_dir)
-            print(f"saved checkpoint to {epoch_dir}")
-            continue
-        break
+        epoch_dir = os.path.join(OUTPUT_DIR, f"epoch-{epoch}")
+        os.makedirs(epoch_dir, exist_ok=True)
+        student.save_pretrained(epoch_dir)
+        tokenizer.save_pretrained(epoch_dir)
+        print(f"saved checkpoint to {epoch_dir}")
+        continue
 
     student.save_pretrained(OUTPUT_DIR)
     tokenizer.save_pretrained(OUTPUT_DIR)
