@@ -1,8 +1,8 @@
 """Izjednaci vocab_size draft i target modela, snimi lokalno.
 
 Qwen2.5 porodica ima razlicite velicine matrice ugnjezdenja:
-    0.5B / 1.5B / 3B   vocab_size = 151936
-    7B / 14B / 32B     vocab_size = 152064
+    0.5B / 1.5B / 3B   vocab_size = 151936   (draft)
+    14B                vocab_size = 152064   (target, isti i za 7B / 32B)
     tokenizer                     = 151665 stvarnih tokena
 
 Visak su neistrenirani redovi koji ne dekodiraju ni u sta (masa verovatnoce
