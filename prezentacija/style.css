@@ -1,0 +1,216 @@
+/* ===============================================================
+   Vizuelni sistem prezentacije. Slidev automatski učitava ovaj fajl.
+
+   Načela:
+     - krupno i prozračno, čitljivo sa poslednjeg reda
+     - jedna akcentna boja, ista kao najbolja kriva na grafiku
+     - brojevi su junaci; sve ostalo im se sklanja s puta
+   =============================================================== */
+
+:root {
+  --akcenat:       #2a78d6;
+  --akcenat-tiho:  #7fb0ea;
+  --povrsina:      #fcfcfb;
+  --ink:           #12120f;
+  --ink-2:         #45443f;
+  --ink-3:         #7c7b74;
+  --linija:        #e6e5e0;
+  --naglaseno:     #f1f7fe;
+}
+
+:root.dark {
+  --akcenat:       #5c9df0;
+  --akcenat-tiho:  #2f4e78;
+  --povrsina:      #17171a;
+  --ink:           #f7f7f5;
+  --ink-2:         #c9c8c1;
+  --ink-3:         #8d8c85;
+  --linija:        #2e2e31;
+  --naglaseno:     #182231;
+}
+
+/* ---------- osnova: sve krupnije ---------- */
+
+.slidev-layout {
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 1.22rem;
+  line-height: 1.55;
+  color: var(--ink-2);
+  padding: 2.6rem 3.2rem;
+}
+
+.slidev-layout p,
+.slidev-layout li {
+  font-size: 1.05em;
+}
+
+.slidev-layout ul {
+  line-height: 1.75;
+}
+
+/* ---------- naslovi ---------- */
+
+.slidev-layout h1 {
+  font-family: inherit;
+  font-size: 2.5rem;
+  font-weight: 680;
+  line-height: 1.12;
+  letter-spacing: -0.028em;
+  color: var(--ink);
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.55rem;
+  position: relative;
+}
+
+.slidev-layout h1::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 3rem;
+  height: 4px;
+  border-radius: 3px;
+  background: var(--akcenat);
+}
+
+.slidev-layout h2 {
+  font-size: 1.7rem;
+  font-weight: 640;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.slidev-layout h3 {
+  font-size: 1.3rem;
+  font-weight: 660;
+  letter-spacing: -0.014em;
+  color: var(--ink);
+  margin-bottom: 0.35rem;
+}
+
+/* naslovni i pregradni slajdovi: bez crtice, još krupnije */
+.slidev-layout.text-center h1 {
+  font-size: 3.2rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0;
+}
+
+.slidev-layout.text-center h1::after {
+  display: none;
+}
+
+/* ---------- tabele ---------- */
+
+.slidev-layout table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.02rem;
+  margin: 1rem 0;
+}
+
+.slidev-layout table th {
+  text-align: right;
+  font-weight: 620;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  border-bottom: 2px solid var(--linija);
+  padding: 0.5rem 0.85rem;
+  white-space: nowrap;
+}
+
+.slidev-layout table th:first-child,
+.slidev-layout table td:first-child {
+  text-align: left;
+  font-weight: 560;
+  color: var(--ink);
+}
+
+.slidev-layout table td {
+  text-align: right;
+  padding: 0.62rem 0.85rem;
+  border-bottom: 1px solid var(--linija);
+  color: var(--ink-2);
+}
+
+.slidev-layout table tr:last-child td {
+  border-bottom: none;
+}
+
+/* red sa istaknutim brojem = glavni nalaz */
+.slidev-layout table tr:has(td strong) {
+  background: var(--naglaseno);
+}
+
+.slidev-layout table tr:has(td strong) td:first-child {
+  box-shadow: inset 3px 0 0 var(--akcenat);
+  border-radius: 6px 0 0 6px;
+}
+
+.slidev-layout table tr:has(td strong) td:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+.slidev-layout table td strong {
+  color: var(--akcenat);
+  font-weight: 700;
+  font-size: 1.12em;
+}
+
+/* ---------- isticanja ---------- */
+
+.slidev-layout strong {
+  font-weight: 660;
+  color: var(--ink);
+}
+
+.slidev-layout code {
+  font-size: 0.92em;
+  font-weight: 500;
+  padding: 0.12em 0.4em;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--akcenat) 12%, transparent);
+  color: var(--ink);
+}
+
+/* ---------- okviri sa porukom ---------- */
+
+.slidev-layout .border-l-4 {
+  border-radius: 0 10px 10px 0;
+  padding: 1rem 1.2rem !important;
+  font-size: 1.02em;
+}
+
+/* ---------- formule ---------- */
+
+.slidev-layout .katex {
+  font-size: 1.15em;
+}
+
+.slidev-layout .katex-display {
+  margin: 1.4rem 0;
+}
+
+/* ---------- kartice sa definicijama ---------- */
+
+.slidev-layout .border.rounded,
+.slidev-layout .p-3.border,
+.slidev-layout .p-4.border {
+  border-color: var(--linija) !important;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+}
+
+/* ---------- sitan tekst pod tabelom ---------- */
+
+.slidev-layout .text-xs {
+  font-size: 0.86rem;
+  color: var(--ink-3);
+}
+
+.slidev-layout .text-sm {
+  font-size: 0.97rem;
+}

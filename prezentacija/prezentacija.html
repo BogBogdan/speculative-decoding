@@ -1,0 +1,863 @@
+<title>Token Tape</title>
+
+<style>
+  :root {
+    color-scheme: light;
+    --ground:  #DFE3DC;
+    --ground-2:#D3D8CF;
+    --ink:     #0E1210;
+    --ink-2:   #3A423C;
+    --ink-3:   #6E7770;
+    --line:    #B9C0B6;
+    --ok:      #0E6F62;
+    --ok-soft: #C9DEDA;
+    --no:      #C2521C;
+    --no-soft: #EFD6C7;
+    --paper:   #EAEDE7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground:  #101310;
+      --ground-2:#171B17;
+      --ink:     #EDF0EA;
+      --ink-2:   #B6BDB5;
+      --ink-3:   #79817A;
+      --line:    #2C322D;
+      --ok:      #3FB8A4;
+      --ok-soft: #14332E;
+      --no:      #E8763C;
+      --no-soft: #37241A;
+      --paper:   #171B17;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground:  #101310;
+    --ground-2:#171B17;
+    --ink:     #EDF0EA;
+    --ink-2:   #B6BDB5;
+    --ink-3:   #79817A;
+    --line:    #2C322D;
+    --ok:      #3FB8A4;
+    --ok-soft: #14332E;
+    --no:      #E8763C;
+    --no-soft: #37241A;
+    --paper:   #171B17;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink-2);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 24px;
+    line-height: 1.48;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .mono { font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace; }
+
+  /* ================= progress tape ================= */
+  .tape-nav {
+    position: fixed; inset: 0 0 auto 0; height: 46px;
+    display: flex; align-items: center; gap: 4px;
+    padding: 0 34px; z-index: 50;
+    background: var(--ground);
+    border-bottom: 2px solid var(--ink);
+  }
+  .tape-nav .cell {
+    flex: 1; height: 15px;
+    border: 2px solid var(--ink);
+    background: transparent;
+    transition: background .25s;
+  }
+  .tape-nav .cell.on { background: var(--ok); }
+  .tape-nav .idx {
+    margin-left: 18px; font-size: 15px; letter-spacing: .12em;
+    color: var(--ink); font-weight: 700; white-space: nowrap;
+  }
+
+  /* ================= slides ================= */
+  .deck { height: 100dvh; overflow-y: auto; scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+  section {
+    min-height: 100dvh; scroll-snap-align: start;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 90px clamp(28px, 5vw, 76px) 50px;
+    max-width: 1340px; margin: 0 auto;
+  }
+
+  /* ================= type ================= */
+  .label {
+    font-family: ui-monospace, monospace;
+    font-size: 16px; letter-spacing: .22em; text-transform: uppercase;
+    font-weight: 700; color: var(--ink);
+    display: inline-block;
+    border-bottom: 3px solid var(--no);
+    padding-bottom: 6px; margin-bottom: 32px;
+  }
+
+  h1 {
+    font-size: clamp(3.4rem, 9vw, 8rem);
+    line-height: .92; letter-spacing: -.045em; font-weight: 800;
+    color: var(--ink); margin: 0 0 32px; max-width: 15ch;
+    text-wrap: balance;
+  }
+  h2 {
+    font-size: clamp(2.7rem, 6vw, 4.9rem);
+    line-height: .97; letter-spacing: -.04em; font-weight: 800;
+    color: var(--ink); margin: 0 0 36px; max-width: 18ch;
+    text-wrap: balance;
+  }
+  h3 {
+    font-size: 1.6rem; font-weight: 750; letter-spacing: -.02em;
+    color: var(--ink); margin: 0 0 10px;
+  }
+  p { margin: 0 0 20px; max-width: 58ch; font-size: 1.14rem; }
+  .big { font-size: 1.85rem; line-height: 1.28; color: var(--ink); max-width: 26ch; font-weight: 500; }
+  strong { color: var(--ink); font-weight: 750; }
+  .dim { color: var(--ink-3); font-size: .94rem; }
+
+  /* ================= token tape ================= */
+  .tape { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+  .t {
+    width: 50px; height: 50px;
+    border: 3px solid var(--ink);
+    display: grid; place-items: center;
+    font-family: ui-monospace, monospace; font-weight: 800; font-size: 19px;
+    color: var(--ink);
+  }
+  .t.ok  { background: var(--ok);  color: var(--paper); }
+  .t.no  { background: var(--no);  color: var(--paper); }
+  .t.gap { border-style: dashed; color: var(--ink-3); }
+  .t.sm  { width: 34px; height: 34px; border-width: 2px; font-size: 14px; }
+  .t.lg  { width: 78px; height: 78px; border-width: 4px; font-size: 30px; }
+  @media (max-width: 860px) { .t.lg { width: 52px; height: 52px; font-size: 20px; } }
+
+  /* ================= hero number ================= */
+  .huge {
+    font-family: ui-monospace, monospace;
+    font-size: clamp(5rem, 16vw, 13rem);
+    font-weight: 800; letter-spacing: -.06em; line-height: .82;
+    color: var(--ink);
+  }
+  .huge em { font-style: normal; color: var(--ok); }
+
+  /* ================= grids ================= */
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; }
+  .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border-top: 3px solid var(--ink); }
+  .row3 > div { padding: 24px 24px 24px 0; border-right: 2px solid var(--line); }
+  .row3 > div:last-child { border-right: none; }
+  .row4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border-top: 3px solid var(--ink); border-bottom: 3px solid var(--ink); }
+  .row4 > div { padding: 22px 22px 22px 0; border-right: 2px solid var(--line); }
+  .row4 > div:last-child { border-right: none; }
+  @media (max-width: 860px) {
+    .row2, .row3, .row4 { grid-template-columns: 1fr; }
+    .row3 > div, .row4 > div { border-right: none; border-bottom: 2px solid var(--line); }
+  }
+
+  .k {
+    font-family: ui-monospace, monospace; font-size: 2.9rem; font-weight: 800;
+    color: var(--ok); display: block; line-height: 1; margin-bottom: 9px;
+    letter-spacing: -.03em;
+  }
+
+  .callout {
+    border-left: 9px solid var(--no);
+    background: var(--ground-2);
+    padding: 24px 28px; margin-top: 36px;
+    font-size: 1.28rem; color: var(--ink);
+    max-width: 60ch;
+  }
+  .callout.ok { border-left-color: var(--ok); }
+
+  /* ================= steps ================= */
+  ol.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; border-top: 3px solid var(--ink); }
+  ol.steps li {
+    display: grid; grid-template-columns: 88px 1fr; gap: 28px;
+    padding: 22px 0; border-bottom: 2px solid var(--line);
+    font-size: 1.2rem;
+  }
+  ol.steps li:last-child { border-bottom: 3px solid var(--ink); }
+  ol.steps .n {
+    font-family: ui-monospace, monospace; font-size: 2.3rem; font-weight: 800;
+    color: var(--no); line-height: 1; letter-spacing: -.04em;
+  }
+
+  /* ================= four-step grid ================= */
+  .quad {
+    display: grid; grid-template-columns: 1fr 1fr;
+    border-top: 3px solid var(--ink); border-left: 3px solid var(--ink);
+  }
+  .quad > div {
+    border-right: 3px solid var(--ink); border-bottom: 3px solid var(--ink);
+    padding: 24px 26px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .quad .hd { display: flex; align-items: baseline; gap: 14px; }
+  .quad .hd .n {
+    font-family: ui-monospace, monospace; font-size: 1.6rem; font-weight: 800;
+    color: var(--no); line-height: 1; letter-spacing: -.04em;
+  }
+  .quad .hd h3 { margin: 0; font-size: 1.42rem; }
+  .quad p { margin: 0; font-size: 1.04rem; max-width: none; }
+  .mini { display: flex; gap: 5px; align-items: center; margin-top: auto; padding-top: 6px; }
+  .mini .t { width: 38px; height: 38px; border-width: 2px; font-size: 15px; }
+  .mini .lbl {
+    font-family: ui-monospace, monospace; font-size: 13px; font-weight: 700;
+    color: var(--ink-3); margin-left: 8px; letter-spacing: .04em;
+  }
+  .sweep {
+    position: relative; padding-top: 16px;
+  }
+  .sweep::before {
+    content: ""; position: absolute; top: 4px; left: 0; right: 46px; height: 10px;
+    border: 2px solid var(--ok); border-bottom: none;
+  }
+  @media (max-width: 860px) { .quad { grid-template-columns: 1fr; } }
+
+  /* ================= live demo ================= */
+  .demo { display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+          border: 3px solid var(--ink); margin-top: 8px; }
+  .demo > div { padding: 20px 22px 18px; display: flex; flex-direction: column; }
+  .demo > div:first-child { border-right: 3px solid var(--ink); }
+  .demo .hd {
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 12px; margin-bottom: 14px; border-bottom: 2px solid var(--line); padding-bottom: 10px;
+  }
+  .demo .who { font-weight: 780; color: var(--ink); font-size: 1.16rem; }
+  .demo .rate {
+    font-family: ui-monospace, monospace; font-weight: 800; font-size: 1.5rem;
+    color: var(--ink-3); letter-spacing: -.03em; font-variant-numeric: tabular-nums;
+  }
+  .demo.running .right .rate, .demo .right .rate.done { color: var(--ok); }
+  .demo .out {
+    font-family: ui-monospace, monospace; font-size: .96rem; line-height: 1.66;
+    color: var(--ink); min-height: 12.6em; max-height: 12.6em; overflow: hidden;
+  }
+  .demo .out .new { background: color-mix(in srgb, var(--ok) 30%, transparent); }
+  .demo .out .idle {
+    color: var(--ink-3); font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; font-size: .82rem;
+  }
+  .demo { cursor: pointer; }
+  .verdict {
+    font-family: ui-monospace, monospace; font-weight: 800; font-size: 1.02rem;
+    letter-spacing: .02em; color: var(--paper); background: var(--ok);
+    padding: 10px 16px; opacity: 0; transform: translateY(8px);
+    transition: opacity .5s ease, transform .5s ease;
+  }
+  .verdict.on { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { .verdict { transition: none; } }
+  .demo .out .caret {
+    display: inline-block; width: .55em; height: 1.05em; vertical-align: -.18em;
+    background: var(--no);
+  }
+  .demo .ft {
+    margin-top: auto; padding-top: 12px; border-top: 2px solid var(--line);
+    display: flex; justify-content: space-between;
+    font-family: ui-monospace, monospace; font-size: .92rem; font-weight: 700; color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
+  }
+  .demo .ft .fin { color: var(--ok); }
+  @media (max-width: 860px) {
+    .demo { grid-template-columns: 1fr; }
+    .demo > div:first-child { border-right: none; border-bottom: 3px solid var(--ink); }
+    .demo .out { min-height: 7em; max-height: 7em; }
+  }
+
+  /* ================= tables ================= */
+  .tw { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: right; font-family: ui-monospace, monospace;
+    font-size: 14px; letter-spacing: .14em; text-transform: uppercase;
+    font-weight: 700; color: var(--ink); padding: 13px 17px;
+    border-bottom: 3px solid var(--ink); white-space: nowrap;
+  }
+  td {
+    text-align: right; padding: 16px 17px;
+    border-bottom: 2px solid var(--line);
+    font-family: ui-monospace, monospace; font-size: 1.28rem;
+    font-variant-numeric: tabular-nums; color: var(--ink-2);
+  }
+  th:first-child, td:first-child {
+    text-align: left; font-family: ui-sans-serif, system-ui, sans-serif;
+    color: var(--ink); font-weight: 750;
+  }
+  tr:last-child td { border-bottom: 3px solid var(--ink); }
+  tr.hi td { background: var(--ok-soft); color: var(--ink); }
+  tr.hi td b { color: var(--ok); font-size: 1.35em; font-weight: 800; }
+
+  /* ================= time bars ================= */
+  .bars { display: grid; gap: 22px; margin: 30px 0 8px; }
+  .bar-row { display: grid; grid-template-columns: 200px 1fr 152px; gap: 24px; align-items: center; }
+  .bar-row .nm { font-weight: 750; color: var(--ink); font-size: 1.2rem; }
+  .bar { height: 62px; border: 3px solid var(--ink); position: relative; overflow: hidden; }
+  .bar > span { position: absolute; inset: 0 auto 0 0; display: block; }
+  .bar .fill-no { background: repeating-linear-gradient(135deg, var(--no) 0 10px, transparent 10px 20px); }
+  .bar .fill-ok { background: var(--ok); }
+  .cap {
+    font-family: ui-monospace, monospace; font-weight: 800;
+    font-size: clamp(1.7rem, 3.4vw, 2.6rem); letter-spacing: -.035em;
+    color: var(--ink); text-align: left; line-height: 1;
+  }
+  .cap.win { color: var(--ok); }
+  @media (max-width: 860px) {
+    .bar-row { grid-template-columns: 1fr 90px; gap: 14px; }
+    .bar-row .nm { grid-column: 1 / -1; }
+  }
+
+  /* citation strip at the foot of a slide */
+  .papers-block { margin-top: auto; }
+  .papers {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 52px;
+    font-size: 1.16rem; line-height: 1.48; color: var(--ink-2);
+  }
+  .papers b {
+    color: var(--ink); font-weight: 780; font-size: clamp(1.35rem, 2.4vw, 1.75rem);
+    display: block; margin: 6px 0 10px; letter-spacing: -.024em; line-height: 1.16;
+  }
+  .papers .src {
+    display: block; font-family: ui-monospace, monospace;
+    font-size: 15px; letter-spacing: .18em; text-transform: uppercase;
+    font-weight: 700; color: var(--no); margin-bottom: 8px;
+  }
+  @media (max-width: 860px) { .papers { grid-template-columns: 1fr; gap: 22px; } }
+
+  .hint {
+    position: fixed; bottom: 14px; right: 20px; z-index: 50;
+    font-family: ui-monospace, monospace; font-size: 13px; font-weight: 700;
+    color: var(--ink); background: var(--ground); padding: 6px 13px;
+    border: 2px solid var(--ink); cursor: pointer; letter-spacing: .06em;
+  }
+  .hint:hover { background: var(--ok); color: var(--paper); border-color: var(--ink); }
+  .hint:focus-visible { outline: 3px solid var(--no); outline-offset: 2px; }
+
+  @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+  .blink { animation: pulse 1.4s ease-in-out infinite; }
+
+  /* progressive reveal on Enter */
+  .step {
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity .42s ease, transform .42s ease;
+  }
+  .step.shown { opacity: 1; transform: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .deck { scroll-behavior: auto; }
+    .blink { animation: none; }
+    .step { transition: none; transform: none; }
+  }
+</style>
+
+<div class="tape-nav" id="nav" aria-hidden="true"></div>
+<button class="hint" id="fs" type="button" title="Full screen (F)">ENTER · ↓ · ⛶ F</button>
+
+<div class="deck" id="deck">
+
+<!-- 01 -->
+<section>
+  <div class="tape" style="margin-bottom:40px">
+    <div class="t ok">✓</div><div class="t ok">✓</div><div class="t ok">✓</div>
+    <div class="t no">✗</div><div class="t gap blink">?</div><div class="t gap">?</div>
+  </div>
+  <h1>Speculative decoding</h1>
+  <p class="big">A small model guesses. A large one verifies.<br>The output stays <strong>bit-for-bit identical</strong>.</p>
+  <div class="row4" style="margin-top:54px">
+    <div><span class="k">2.75×</span><span class="dim">speedup</span></div>
+    <div><span class="k">0.82</span><span class="dim">acceptance rate</span></div>
+    <div><span class="k">14B</span><span class="dim">target model</span></div>
+    <div><span class="k">0.5B</span><span class="dim">draft model</span></div>
+  </div>
+</section>
+
+<!-- 02 -->
+<section>
+  <span class="label">The problem</span>
+  <h2 style="font-size:clamp(2.2rem,4.4vw,3.4rem); max-width:26ch; margin-bottom:44px; font-weight:700; color:var(--ink)">
+    Have you ever wondered how a model with billions of parameters answers you in real time?
+  </h2>
+  <p class="step" style="font-size:clamp(2.6rem,5.8vw,4.4rem); line-height:1.06; color:var(--ink); font-weight:800; letter-spacing:-.04em; max-width:22ch; margin:0 0 50px">
+    It doesn't. It answers you <span style="color:var(--no)">one token at a time</span>.
+  </p>
+  <div class="step">
+    <div class="tape" style="margin-bottom:40px">
+      <div class="t lg ok">1</div><div class="t lg ok">2</div><div class="t lg ok">3</div>
+      <div class="t lg ok">4</div><div class="t lg ok">5</div><div class="t lg gap">6</div>
+      <div class="t lg gap">7</div><div class="t lg gap">8</div>
+      <span class="mono" style="margin-left:22px; font-size:1.7rem; font-weight:800; color:var(--ink)">… × 500</span>
+    </div>
+    <div class="callout ok" style="margin-top:0">Can it be made faster while the output stays <strong>provably identical</strong>?</div>
+  </div>
+</section>
+
+<!-- 04 -->
+<section>
+  <span class="label">Idea</span>
+  <h1 style="font-size:clamp(2.9rem,6.8vw,6rem); max-width:20ch">Guess ahead. Verify all at once.</h1>
+  <div class="bars step" style="margin-top:24px">
+    <div class="bar-row">
+      <span class="nm">Standard</span>
+      <div class="bar"><span class="fill-no" style="width:100%"></span></div>
+      <div class="cap">1.00×</div>
+    </div>
+    <div class="bar-row">
+      <span class="nm">Speculative</span>
+      <div class="bar"><span class="fill-ok" style="width:36%"></span></div>
+      <div class="cap win">2.75×</div>
+    </div>
+  </div>
+  <div class="papers-block step">
+  <div class="papers">
+    <div>
+      <span class="src">Google Research · 2023</span>
+      <b>Fast Inference from Transformers via Speculative Decoding</b>
+      Leviathan, Kalman, Matias. Introduces the algorithm, proves the output is unchanged,
+      and gives the speedup model built on <span class="mono">α</span> and <span class="mono">c</span>.
+    </div>
+    <div>
+      <span class="src">DeepMind · 2023</span>
+      <b>Accelerating LLM Decoding with Speculative Sampling</b>
+      Chen, Borgeaud, Irving et al. Derive the same procedure independently
+      and confirm it on a 70-billion-parameter model.
+    </div>
+  </div>
+  </div>
+</section>
+
+<!-- 07 -->
+<section>
+  <span class="label">Procedure</span>
+  <h2 style="margin-bottom:26px">Four steps, one round</h2>
+  <div class="quad">
+    <div class="step">
+      <div class="hd"><span class="n">01</span><h3>Guess</h3></div>
+      <p>The draft generates <span class="mono">γ</span> tokens ahead — sequentially, but cheap, because the model is small.</p>
+      <div class="mini">
+        <div class="t gap">?</div><div class="t gap">?</div><div class="t gap">?</div><div class="t gap">?</div>
+        <span class="lbl">draft proposes</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="hd"><span class="n">02</span><h3>Verify</h3></div>
+      <p>The target computes its distribution for <strong>all</strong> those positions in a single pass. Verification parallelises even though generation does not.</p>
+      <div class="mini sweep">
+        <div class="t gap">?</div><div class="t gap">?</div><div class="t gap">?</div><div class="t gap">?</div>
+        <span class="lbl">one target call</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="hd"><span class="n">03</span><h3>Decide</h3></div>
+      <p>Each guess is accepted with probability <span class="mono">min(1, p/q)</span> — where <span class="mono">p</span> is the target's opinion and <span class="mono">q</span> the draft's.</p>
+      <div class="mini">
+        <div class="t ok">✓</div><div class="t ok">✓</div><div class="t no">✗</div><div class="t gap" style="opacity:.35">·</div>
+        <span class="lbl">stop at first ✗</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="hd"><span class="n">04</span><h3>Correct</h3></div>
+      <p>Resample the rejected position from the corrected distribution. If every guess passed — one <strong>bonus</strong> token instead.</p>
+      <div class="mini">
+        <div class="t ok">✓</div><div class="t ok">✓</div>
+        <div class="t" style="border-color:var(--no); color:var(--no); border-style:dashed">↺</div>
+        <span class="lbl">3 tokens, 1 call</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 08 -->
+<section>
+  <span class="label">Guarantee</span>
+  <h2>Why the output is unchanged</h2>
+  <div class="tape" style="margin-bottom:30px">
+    <div class="t ok">✓</div><div class="t ok">✓</div><div class="t no">✗</div>
+    <span class="mono" style="margin:0 20px; color:var(--ink-3)">→</span>
+    <div class="t" style="border-style:dashed; border-color:var(--no); color:var(--no)">↺</div>
+    <span class="mono" style="margin-left:16px; color:var(--ink)">resample from <b>norm(p − q)⁺</b></span>
+  </div>
+  <p class="big" style="max-width:34ch">The two cases — accepted guess and post-rejection correction — sum to exactly <strong>p(x)</strong>.</p>
+  <div class="callout ok">The result is <strong>exactly the target distribution</strong>, no matter how poor the draft is.
+  A bad draft only means <strong>slower</strong>, never <strong>different</strong>.</div>
+  <p class="dim" style="margin-top:24px">Confirmed empirically: across 100,000 samples the deviation stays below sampling noise.</p>
+</section>
+
+<!-- 09 -->
+<section>
+  <span class="label">Model</span>
+  <h2>Everything follows from two numbers</h2>
+  <div class="row4">
+    <div><span class="k">γ</span><span class="dim">tokens the draft guesses</span></div>
+    <div><span class="k">α</span><span class="dim">how many the target accepts</span></div>
+    <div><span class="k">c</span><span class="dim">what the draft costs</span></div>
+    <div><span class="k">E</span><span class="dim">tokens per target call</span></div>
+  </div>
+  <div class="mono" style="font-size:clamp(1.5rem,3vw,2.3rem); font-weight:800; color:var(--ink); margin:40px 0 0; letter-spacing:-.02em">
+    speedup &nbsp;=&nbsp; E / (γc + 1)
+  </div>
+  <div class="callout">The numerator grows with the draft's <strong>quality</strong>, the denominator with its <strong>cost</strong>.
+  There is a speedup only while the gain outruns the price.</div>
+</section>
+
+<!-- 10 -->
+<section>
+  <span class="label">Result</span>
+  <div style="display:flex; align-items:baseline; gap:30px; flex-wrap:wrap; margin-bottom:16px">
+    <div class="huge"><em>2.75×</em></div>
+    <div style="max-width:22ch; font-size:1.5rem; color:var(--ink); font-weight:600">faster at <span class="mono">γ = 3</span>, with output identical to standard decoding</div>
+  </div>
+  <div class="tw" style="margin-top:26px">
+    <table>
+      <thead><tr><th>γ</th><th>α</th><th>tokens / round</th><th>theory</th><th>measured</th><th>efficiency</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>0.905</td><td>1.905</td><td>1.82×</td><td>1.77×</td><td>0.97</td></tr>
+        <tr class="hi"><td>3</td><td>0.822</td><td>3.465</td><td>3.06×</td><td><b>2.75×</b></td><td>0.90</td></tr>
+        <tr><td>5</td><td>0.749</td><td>4.743</td><td>3.89×</td><td>2.37×</td><td>0.61</td></tr>
+        <tr><td>8</td><td>0.655</td><td>6.240</td><td>4.61×</td><td>2.17×</td><td>0.47</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="dim" style="margin-top:18px">draft 0.5B · target 14B · 20 prefixes × 128 tokens · batch 1</p>
+</section>
+
+<!-- 11 -->
+<section>
+  <span class="label">Result · distilled draft</span>
+  <h2>A better guesser lifts every row</h2>
+  <div class="tw">
+    <table>
+      <thead><tr><th>γ</th><th>α</th><th>tokens / round</th><th>theory</th><th>measured</th><th>baseline</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>0.930</td><td>1.930</td><td>1.85×</td><td>1.79×</td><td>1.77×</td></tr>
+        <tr class="hi"><td>3</td><td>0.866</td><td>3.598</td><td>3.18×</td><td><b>2.92×</b></td><td>2.75×</td></tr>
+        <tr><td>5</td><td>0.809</td><td>5.043</td><td>4.13×</td><td>2.73×</td><td>2.37×</td></tr>
+        <tr><td>8</td><td>0.731</td><td>6.851</td><td>5.06×</td><td>2.53×</td><td>2.17×</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout ok">The gain is <strong>modest but consistent</strong>, and largest at high <span class="mono">γ</span> — better guessing pays off most when you guess deeper.</div>
+</section>
+
+<!-- 12 · live demo -->
+<section>
+  <span class="label">Side by side</span>
+  <h2 style="margin-bottom:22px">The same paragraph, generated twice</h2>
+  <div class="demo" id="demo" data-demo title="Press Enter or click to start">
+    <div class="left">
+      <div class="hd"><span class="who">Standard decoding</span><span class="rate" data-rate>0 tok/s</span></div>
+      <div class="out" data-out><span class="idle">press ENTER to generate</span></div>
+      <div class="ft"><span data-count>0 tokens</span><span data-time>0.0 s</span></div>
+    </div>
+    <div class="right">
+      <div class="hd"><span class="who">Speculative · distilled</span><span class="rate" data-rate>0 tok/s</span></div>
+      <div class="out" data-out><span class="idle">press ENTER to generate</span></div>
+      <div class="ft"><span data-count>0 tokens</span><span data-time>0.0 s</span></div>
+    </div>
+  </div>
+  <div style="display:flex; align-items:center; gap:26px; margin-top:22px; flex-wrap:wrap">
+    <div style="display:flex; align-items:baseline; gap:12px">
+      <span class="mono" style="font-size:.8rem; letter-spacing:.16em; text-transform:uppercase; font-weight:700; color:var(--ink-3)">live speedup</span>
+      <span class="mono" id="ratio" style="font-size:clamp(2rem,4vw,3rem); font-weight:800; color:var(--ok); letter-spacing:-.04em; font-variant-numeric:tabular-nums">—</span>
+    </div>
+    <p style="margin:0; font-size:1.08rem; max-width:40ch">
+      The right side arrives in <strong>bursts</strong> — one target call
+      returning several accepted tokens at once.
+    </p>
+    <div id="verdict" class="verdict"></div>
+    <span class="mono" style="font-size:.8rem; letter-spacing:.14em; text-transform:uppercase; font-weight:700; color:var(--ink-3)">slow motion 4×</span>
+  </div>
+</section>
+
+<!-- 13 -->
+<section>
+  <span class="label">Analysis</span>
+  <h2>α decays with depth</h2>
+  <div class="row4">
+    <div><span class="k">0.905</span><span class="dim">γ = 1</span></div>
+    <div><span class="k" style="color:var(--ink-2)">0.822</span><span class="dim">γ = 3</span></div>
+    <div><span class="k" style="color:var(--ink-3)">0.749</span><span class="dim">γ = 5</span></div>
+    <div><span class="k" style="color:var(--no)">0.655</span><span class="dim">γ = 8</span></div>
+  </div>
+  <div class="row2" style="margin-top:38px">
+    <p>The draft almost always gets the first guess right. The further it runs without correction, the more it <strong>drifts</strong> from the target.</p>
+    <p>That is why efficiency falls from <span class="mono">0.97</span> to <span class="mono">0.47</span>: theory says larger <span class="mono">γ</span> always helps, measurement disagrees.</p>
+  </div>
+</section>
+
+<!-- 13 -->
+<section>
+  <span class="label">Ceiling</span>
+  <h2>A perfect draft buys only 15% more</h2>
+  <div class="bars">
+    <div class="bar-row">
+      <span class="nm">today</span>
+      <div class="bar"><span class="fill-ok" style="width:62%"></span></div>
+      <div class="cap">3.06×</div>
+    </div>
+    <div class="bar-row">
+      <span class="nm">α = 1.0 · perfect</span>
+      <div class="bar"><span class="fill-ok" style="width:72%"></span></div>
+      <div class="cap win">3.53×</div>
+    </div>
+  </div>
+  <div class="callout"><strong>α is not the bottleneck.</strong> The bottleneck is the cost of guessing and implementation overhead.
+  So the payoff is in a <strong>cheaper</strong> draft, not a better one.</div>
+</section>
+
+<!-- 14 -->
+<section>
+  <span class="label">Distillation</span>
+  <h2>Teaching the draft the target's distribution</h2>
+  <ol class="steps">
+    <li><span class="n">01</span><div><strong>Data.</strong> The target generates continuations from wikitext train-split prefixes; its <span class="mono">top-50</span> candidates are stored per position.</div></li>
+    <li><span class="n">02</span><div><strong>Loss.</strong> The draft learns the whole distribution, not just the sampled token — because <span class="mono">α</span> measures how well distributions overlap.</div></li>
+    <li><span class="n">03</span><div><strong>Result.</strong> <span class="mono">α</span> rises from <span class="mono">0.905</span> to <span class="mono">0.93</span>: <strong>+6%</strong> at <span class="mono">γ=3</span>.</div></li>
+  </ol>
+  <div class="callout">Since a perfect draft is worth at most ~15%, distillation captured roughly <strong>one third</strong> of the available headroom.</div>
+</section>
+
+<!-- 15 -->
+<section>
+  <span class="label">Draft size</span>
+  <h2>The smallest one wins</h2>
+  <div class="tw">
+    <table>
+      <thead><tr><th>draft</th><th>params</th><th>α</th><th>c</th><th>γ=1</th><th>γ=3</th><th>γ=5</th></tr></thead>
+      <tbody>
+        <tr class="hi"><td>0.5B</td><td>494 M</td><td>0.905</td><td>0.044</td><td>1.77×</td><td><b>2.75×</b></td><td>2.37×</td></tr>
+        <tr><td>1.5B</td><td>1.54 G</td><td>0.929</td><td>0.138</td><td>1.65×</td><td>2.29×</td><td>1.82×</td></tr>
+        <tr><td>3B</td><td>3.09 G</td><td>0.934</td><td>0.276</td><td>1.47×</td><td>1.79×</td><td>1.31×</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="row2" style="margin-top:34px">
+    <div><h3>Quality saturates</h3><p style="margin:0">0.5B → 1.5B: <span class="mono">+0.024</span> on α.<br>1.5B → 3B: only <span class="mono">+0.005</span>.</p></div>
+    <div><h3>Cost does not</h3><p style="margin:0">c climbs steadily: <span class="mono">0.044 → 0.138 → 0.276</span>. Every doubling is paid in full.</p></div>
+  </div>
+</section>
+
+<!-- 16 -->
+<section>
+  <span class="label">Comparison</span>
+  <h2>Speedup against guess depth</h2>
+  <div class="tw">
+  <svg viewBox="0 0 820 370" width="100%" role="img" aria-label="Speedup versus gamma for three draft sizes; all three curves peak at gamma 3 and never cross">
+    <g stroke="var(--line)" stroke-width="2">
+      <line x1="58" y1="26" x2="700" y2="26"/><line x1="58" y1="104" x2="700" y2="104"/>
+      <line x1="58" y1="182" x2="700" y2="182"/><line x1="58" y1="260" x2="700" y2="260"/>
+    </g>
+    <line x1="58" y1="338" x2="700" y2="338" stroke="var(--ink)" stroke-width="3"/>
+    <g font-size="15" fill="var(--ink-3)" text-anchor="end" font-family="ui-monospace, monospace" font-weight="700">
+      <text x="48" y="31">3.0×</text><text x="48" y="109">2.5×</text>
+      <text x="48" y="187">2.0×</text><text x="48" y="265">1.5×</text><text x="48" y="343">1.0×</text>
+    </g>
+    <g font-size="16" fill="var(--ink)" text-anchor="middle" font-family="ui-monospace, monospace" font-weight="700">
+      <text x="58" y="363">γ1</text><text x="241" y="363">γ3</text>
+      <text x="424" y="363">γ5</text><text x="700" y="363">γ8</text>
+    </g>
+
+    <polyline fill="none" stroke="var(--ok)" stroke-width="4" stroke-linejoin="round" points="58,218 241,65 424,124 700,156"/>
+    <g fill="var(--ok)" stroke="var(--ground)" stroke-width="3">
+      <circle cx="58" cy="218" r="7"/><circle cx="241" cy="65" r="10"/>
+      <circle cx="424" cy="124" r="7"/><circle cx="700" cy="156" r="7"/>
+    </g>
+    <text x="714" y="161" font-size="17" font-weight="800" fill="var(--ink)">0.5B</text>
+    <text x="241" y="41" font-size="22" font-weight="800" fill="var(--ok)" text-anchor="middle" font-family="ui-monospace, monospace">2.75×</text>
+
+    <polyline fill="none" stroke="var(--no)" stroke-width="3" stroke-linejoin="round" points="58,237 241,137 424,210 700,255"/>
+    <g fill="var(--no)" stroke="var(--ground)" stroke-width="3">
+      <circle cx="58" cy="237" r="6"/><circle cx="241" cy="137" r="6"/>
+      <circle cx="424" cy="210" r="6"/><circle cx="700" cy="255" r="6"/>
+    </g>
+    <text x="714" y="260" font-size="17" font-weight="800" fill="var(--ink)">1.5B</text>
+
+    <polyline fill="none" stroke="var(--ink-3)" stroke-width="3" stroke-dasharray="8 5" stroke-linejoin="round" points="58,265 241,216 424,290 700,335"/>
+    <g fill="var(--ink-3)" stroke="var(--ground)" stroke-width="3">
+      <circle cx="58" cy="265" r="6"/><circle cx="241" cy="216" r="6"/>
+      <circle cx="424" cy="290" r="6"/><circle cx="700" cy="335" r="6"/>
+    </g>
+    <text x="714" y="340" font-size="17" font-weight="800" fill="var(--ink)">3B</text>
+  </svg>
+  </div>
+  <div class="callout ok">All three curves peak at <span class="mono">γ=3</span> and <strong>never cross</strong>.
+  The gap widens with <span class="mono">γ</span> — the deeper you guess, the more a large draft costs you.</div>
+</section>
+
+<!-- 17 -->
+<section>
+  <span class="label">Conclusions</span>
+  <h2 style="margin-bottom:22px">Five findings</h2>
+  <ol class="steps">
+    <li><span class="n">01</span><div><strong>The method works.</strong> <span class="mono">2.75×</span> at <span class="mono">γ=3</span>, with output identical to standard decoding.</div></li>
+    <li><span class="n">02</span><div><strong>The theory holds.</strong> The speedup model reproduces measurements up to <span class="mono">γ ≤ 3</span>.</div></li>
+    <li><span class="n">03</span><div><strong>Smaller drafts win.</strong> 0.5B beats both 1.5B and 3B — cost grows faster than quality.</div></li>
+    <li><span class="n">04</span><div><strong>Distillation helps modestly</strong>, <span class="mono">+6%</span>. Even a perfect draft is worth at most ~15%.</div></li>
+    <li><span class="n">05</span><div><strong>Next step:</strong> a cheaper draft, not a better one.</div></li>
+  </ol>
+</section>
+
+<!-- 18 -->
+<section>
+  <div class="tape" style="margin-bottom:42px">
+    <div class="t ok">✓</div><div class="t ok">✓</div><div class="t ok">✓</div>
+    <div class="t ok">✓</div><div class="t ok">✓</div><div class="t ok">✓</div>
+  </div>
+  <h1 style="font-size:clamp(3.8rem,12vw,10rem)">Questions</h1>
+  <p class="mono" style="font-size:1.15rem; color:var(--ink)">github.com/BogBogdan/speculative-decoding</p>
+</section>
+
+</div>
+
+<script>
+  const deck = document.getElementById('deck');
+  const slides = [...deck.querySelectorAll('section')];
+  const nav = document.getElementById('nav');
+
+  slides.forEach(() => { const c = document.createElement('div'); c.className = 'cell'; nav.appendChild(c); });
+  const idx = document.createElement('div'); idx.className = 'idx mono'; nav.appendChild(idx);
+  const cells = [...nav.querySelectorAll('.cell')];
+
+  const cur = () => {
+    const mid = deck.scrollTop + deck.clientHeight / 2;
+    let i = 0; slides.forEach((s, k) => { if (s.offsetTop < mid) i = k; }); return i;
+  };
+  const mark = () => {
+    const i = cur();
+    cells.forEach((c, k) => c.classList.toggle('on', k <= i));
+    idx.textContent = String(i + 1).padStart(2, '0') + ' / ' + String(slides.length).padStart(2, '0');
+  };
+  const go = d => slides[Math.min(slides.length - 1, Math.max(0, cur() + d))].scrollIntoView({ behavior: 'smooth' });
+
+  // Enter reveals the next hidden element on the current slide;
+  // once everything is out, it moves on to the next slide.
+  const revealNext = () => {
+    const hidden = slides[cur()].querySelector('.step:not(.shown)');
+    if (hidden) { hidden.classList.add('shown'); return true; }
+    return false;
+  };
+  const revealAll = i => slides[i].querySelectorAll('.step').forEach(s => s.classList.add('shown'));
+
+  /* ---- live side-by-side generation ----
+     Left  : one token per target call.
+     Right : one target call returns k+1 tokens, k drawn from the measured
+             acceptance distribution (a = 0.93, γ = 3), and the call itself
+             costs a little more — which lands on the measured 2.92×.        */
+  const DEMO_TEXT = ("The lighthouse was built in 1868 on the northern headland, replacing a "
+    + "wooden tower destroyed by a storm three winters earlier. Its keeper wound the clockwork "
+    + "by hand every four hours through the night. Automation arrived in 1961, the cottage was "
+    + "abandoned, and the headland was left to the gulls.").split(/(\s+)/)
+    .filter(t => t.trim().length).map((w, i, a) => w + (i < a.length - 1 ? " " : ""));
+
+  /* Burst lengths are fixed rather than sampled: over only ~14 calls a random
+     draw swings the average by ±10%, so the ratio on screen would read 2.8×
+     one run and 3.1× the next. This sequence has the same shape the measured
+     distribution predicts (α = 0.93 → most calls accept all γ+1) and sums to
+     exactly the 50 tokens of the paragraph in 14 calls.                      */
+  const BURSTS = [4, 4, 4, 4, 3, 4, 4, 4, 4, 2, 4, 4, 4, 1];
+  /* Real rates: 41 tok/s for the 14B target alone, 120 tok/s speculative.
+     At those speeds the whole paragraph is gone in about a second, so the
+     animation runs SLOWMO× slower while the readouts report model time —
+     the tok/s and seconds on screen are the real ones.                     */
+  const SLOWMO = 4, TICK_L = 97.6, TICK_R = 121;
+  let bi = 0;
+  const drawBurst = () => BURSTS[bi++ % BURSTS.length];
+
+  let demoRan = false;
+  function startDemo() {
+    const root = document.getElementById('demo');
+    if (!root || demoRan) return;
+    demoRan = true;
+    root.classList.add('running');
+
+    const N = DEMO_TEXT.length;
+    const CUM = BURSTS.reduce((a, b, i) => (a.push((a[i - 1] || 0) + b), a), []);
+    const badge = document.getElementById('ratio');
+
+    const panel = side => {
+      const box = root.querySelector('.' + side + ' [data-out]');
+      box.innerHTML = '<span data-old></span><span data-hi class="new"></span>';
+      return {
+        old:  box.querySelector('[data-old]'),
+        hi:   box.querySelector('[data-hi]'),
+        rate: root.querySelector('.' + side + ' [data-rate]'),
+        cnt:  root.querySelector('.' + side + ' [data-count]'),
+        tm:   root.querySelector('.' + side + ' [data-time]'),
+        prev: 0, from: 0, fin: 0
+      };
+    };
+    const L = panel('left'), R = panel('right');
+
+    // Each frame simply rewrites the text from the start up to this side's
+    // index. No node surgery, so the two panels cannot drift apart.
+    const draw = (p, i, el) => {
+      if (i !== p.prev) { p.from = p.prev; p.prev = i; }
+      p.old.textContent = DEMO_TEXT.slice(0, p.from).join('');
+      p.hi.textContent  = DEMO_TEXT.slice(p.from, i).join('');
+      p.cnt.textContent = i + ' tokens';
+      if (i >= N && !p.fin) {
+        p.fin = el;
+        p.rate.classList.add('done');
+        p.rate.textContent = Math.round(N / el) + ' tok/s';
+        p.tm.className = 'fin';
+        p.tm.textContent = 'done · ' + el.toFixed(2) + ' s';
+      } else if (!p.fin) {
+        p.tm.textContent = el.toFixed(1) + ' s';
+        if (el > 0.3) p.rate.textContent = Math.round(i / el) + ' tok/s';
+      }
+    };
+
+    const t0 = performance.now();
+    const frame = now => {
+      const ms = now - t0, el = ms / 1000 / SLOWMO;   // model time, not wall time
+      const li = Math.min(N, Math.floor(ms / TICK_L));
+      const calls = Math.min(BURSTS.length,
+        ms < TICK_L ? 0 : Math.floor((ms - TICK_L) / TICK_R) + 1);
+      const ri = calls ? Math.min(N, CUM[calls - 1]) : 0;
+      draw(L, li, el);
+      draw(R, ri, el);
+
+      if (L.fin && R.fin) {
+        badge.textContent = (L.fin / R.fin).toFixed(2) + '×';
+        const v = document.getElementById('verdict');
+        if (v) {
+          const same = L.old.textContent + L.hi.textContent === R.old.textContent + R.hi.textContent;
+          v.textContent = same ? '✓ both panels produced identical text' : '✗ outputs differ';
+          if (!same) v.style.background = 'var(--no)';
+          v.classList.add('on');
+        }
+      } else {
+        if (el > 0.5 && li) badge.textContent = (ri / li).toFixed(2) + '×';
+        requestAnimationFrame(frame);
+      }
+    };
+    requestAnimationFrame(frame);
+  }
+
+  const fullscreen = () => {
+    const el = document.documentElement;
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+  };
+  document.getElementById('fs').addEventListener('click', fullscreen);
+  document.getElementById('demo')?.addEventListener('click', startDemo);
+
+  deck.addEventListener('scroll', mark, { passive: true });
+  addEventListener('keydown', e => {
+    if (e.key === 'f' || e.key === 'F') { e.preventDefault(); fullscreen(); return; }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const demo = slides[cur()].querySelector('[data-demo]');
+      if (demo && !demoRan) { startDemo(); return; }   // demo slide: Enter runs it
+      if (!revealNext()) go(1);
+      return;
+    }
+    if (['ArrowDown','ArrowRight','PageDown',' '].includes(e.key)) { e.preventDefault(); revealAll(cur()); go(1); }
+    if (['ArrowUp','ArrowLeft','PageUp'].includes(e.key)) { e.preventDefault(); go(-1); }
+    if (e.key === 'Home') { e.preventDefault(); slides[0].scrollIntoView({behavior:'smooth'}); }
+    if (e.key === 'End') { e.preventDefault(); slides.at(-1).scrollIntoView({behavior:'smooth'}); }
+  });
+  mark();
+</script>

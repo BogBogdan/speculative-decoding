@@ -1,0 +1,303 @@
+<title>Speaker Script</title>
+
+<style>
+  :root {
+    color-scheme: light;
+    --ground:#DFE3DC; --paper:#EAEDE7; --ink:#0E1210; --ink-2:#3A423C; --ink-3:#6E7770;
+    --line:#B9C0B6; --ok:#0E6F62; --no:#C2521C;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground:#101310; --paper:#171B17; --ink:#EDF0EA; --ink-2:#B6BDB5; --ink-3:#79817A;
+      --line:#2C322D; --ok:#3FB8A4; --no:#E8763C;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground:#101310; --paper:#171B17; --ink:#EDF0EA; --ink-2:#B6BDB5; --ink-3:#79817A;
+    --line:#2C322D; --ok:#3FB8A4; --no:#E8763C;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink-2);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 19px; line-height: 1.62; -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace; }
+
+  .wrap { max-width: 860px; margin: 0 auto; padding: 56px 28px 100px; }
+
+  header { border-bottom: 4px solid var(--ink); padding-bottom: 26px; margin-bottom: 12px; }
+  .kicker {
+    font-family: ui-monospace, monospace; font-size: 14px; letter-spacing: .22em;
+    text-transform: uppercase; font-weight: 700; color: var(--no); margin-bottom: 14px;
+  }
+  h1 {
+    font-size: clamp(2.4rem, 6vw, 3.6rem); line-height: .98; letter-spacing: -.04em;
+    font-weight: 800; color: var(--ink); margin: 0 0 16px;
+  }
+  header p { margin: 0; color: var(--ink-3); font-size: 1.02rem; }
+
+  .slide {
+    display: grid; grid-template-columns: 62px 1fr; gap: 24px;
+    padding: 30px 0; border-bottom: 2px solid var(--line);
+  }
+  .slide:last-of-type { border-bottom: 4px solid var(--ink); }
+  .num {
+    font-family: ui-monospace, monospace; font-size: 1.9rem; font-weight: 800;
+    color: var(--no); line-height: 1; letter-spacing: -.04em;
+  }
+  .slide h2 {
+    font-size: 1.42rem; font-weight: 780; letter-spacing: -.022em;
+    color: var(--ink); margin: 0 0 4px;
+  }
+  .meta {
+    font-family: ui-monospace, monospace; font-size: 13px; font-weight: 700;
+    letter-spacing: .1em; margin-bottom: 14px; display: block; color: var(--ok);
+  }
+  .meta .clicks { color: var(--no); margin-left: 12px; }
+  .say { margin: 0 0 14px; }
+  .say:last-child { margin-bottom: 0; }
+  strong { color: var(--ink); font-weight: 720; }
+  em { font-style: normal; background: color-mix(in srgb, var(--ok) 18%, transparent); padding: 0 .25em; color: var(--ink); }
+  .enter {
+    display: inline-block; font-family: ui-monospace, monospace; font-size: 12px;
+    font-weight: 800; letter-spacing: .1em; color: var(--paper); background: var(--no);
+    padding: 2px 8px; margin-right: 8px; vertical-align: 2px;
+  }
+
+  .cue {
+    border-left: 5px solid var(--ok); background: var(--paper);
+    padding: 12px 18px; margin-top: 14px; font-size: .95rem; color: var(--ink-2);
+  }
+  .cue b { color: var(--ink); }
+
+  .total {
+    margin-top: 34px; padding: 22px 26px; border: 3px solid var(--ink);
+    background: var(--paper); color: var(--ink); font-size: 1.05rem;
+  }
+  .total .mono { font-weight: 800; color: var(--ok); }
+
+  @media print {
+    body { background: #fff; font-size: 12pt; }
+    .slide { break-inside: avoid; }
+  }
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="kicker">Speaker script</div>
+  <h1>Speculative decoding</h1>
+  <p>16 slides · roughly 12 minutes · what to say, slide by slide</p>
+</header>
+
+<div class="slide">
+  <div class="num">01</div>
+  <div>
+    <h2>Title — Speculative decoding</h2>
+    <span class="meta">~30 s</span>
+    <p class="say">Good morning. My topic is speculative decoding — a technique for making large language models generate text faster.</p>
+    <p class="say">What makes it unusual is the guarantee. The output is not approximated, not degraded, not "close enough" — it is <em>bit-for-bit identical</em> to what the model would have produced anyway. We change how the work is scheduled, never what comes out of it.</p>
+    <p class="say">The setup is a 14-billion-parameter target model paired with a 0.5-billion draft model, evaluated on Wikipedia text.</p>
+    <div class="cue"><b>Cue:</b> point at the four numbers along the bottom. 2.75× is the headline — we come back to it.</div>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="num">02</div>
+  <div>
+    <h2>The problem</h2>
+    <span class="meta">~1 min <span class="clicks">2 clicks</span></span>
+    <p class="say">Let me start with a question. Have you ever wondered how a model with billions of parameters can answer you in real time?</p>
+    <p class="say"><span class="enter">ENTER</span>The honest answer is: it doesn't. It answers you <em>one token at a time</em>.</p>
+    <p class="say"><span class="enter">ENTER</span>Every token you see costs a full pass through all fourteen billion parameters. A five-hundred-token answer means five hundred passes — the model reads everything it knows, five hundred times over.</p>
+    <p class="say">And you cannot batch your way out of it, because each token depends on the one before it. That dependency is inherent to the method, not a flaw in the implementation.</p>
+    <p class="say">So the question this thesis asks is: can we make it faster while the output stays <em>provably identical</em>?</p>
+    <div class="cue"><b>Cue:</b> pause after "it doesn't" before pressing Enter. Let it land.</div>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="num">03</div>
+  <div>
+    <h2>Idea — guess ahead, verify at once</h2>
+    <span class="meta">~1 min 10 s <span class="clicks">2 clicks</span></span>
+    <p class="say">The idea is this. Instead of asking the big model for one token, we let a small, cheap model guess several tokens ahead. Then the big model checks all of those guesses in a single pass.</p>
+    <p class="say">Checking is parallel even though generating is not — because the tokens are already there, we don't have to wait for them.</p>
+    <p class="say"><span class="enter">ENTER</span>These two bars are the same work. The striped one is standard decoding; the solid one is speculative. Same weights, same sampling, same text — the only thing that changes is how long the GPU spends waiting.</p>
+    <p class="say"><span class="enter">ENTER</span>The idea is not mine. It comes from two papers, both from 2023. The first, from Google Research, introduces the algorithm, proves the output is unchanged, and gives the speedup model I will use throughout. The second, from DeepMind, derives the same procedure independently and confirms it at seventy billion parameters.</p>
+    <p class="say">I implemented Algorithm 1 from the first paper and benchmarked it against reference implementations.</p>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="num">04</div>
+  <div>
+    <h2>Procedure — four steps</h2>
+    <span class="meta">~1 min <span class="clicks">4 clicks, one per box</span></span>
+    <p class="say">The procedure has four steps.</p>
+    <p class="say"><span class="enter">ENTER</span>First, the draft model guesses gamma tokens ahead — one after another, but cheaply, because the model is small.</p>
+    <p class="say"><span class="enter">ENTER</span>Second, the target model takes all of those positions and computes its own distribution for each of them in a single pass. The bracket in that box is the point: one call, all positions.</p>
+    <p class="say"><span class="enter">ENTER</span>Third, we walk through the guesses in order. Each is accepted with probability min of one and p over q — where p is what the target thinks, and q is what the draft thought. We stop at the first rejection.</p>
+    <p class="say"><span class="enter">ENTER</span>Fourth, we resample that rejected position from a corrected distribution. And if every guess was accepted, we get one extra token for free. Three tokens out of one call, in that example.</p>
+    <div class="cue"><b>Cue:</b> the bonus token is worth emphasising — it is why a round can yield more than gamma tokens.</div>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="num">05</div>
+  <div>
+    <h2>Guarantee — why the output is unchanged</h2>
+    <span class="meta">~50 s</span>
+    <p class="say">This is the part that makes the method interesting, so let me be precise.</p>
+    <p class="say">A token can be emitted in two ways: it was guessed and accepted, or it came from the correction after a rejection. Add those two probabilities together and they sum to exactly p of x — the target's own distribution.</p>
+    <p class="say">So the output is sampled from the target distribution regardless of how good the draft is. A bad draft only means <em>slower</em>. It never means <em>different</em>.</p>
+    <p class="say">We verified this empirically as well — over a hundred thousand samples the deviation stays below sampling noise.</p>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="num">06</div>
+  <div>
+    <h2>Model — two numbers</h2>
+    <span class="meta">~50 s</span>
+    <p class="say">Everything about performance follows from two numbers.</p>
+    <p class="say">Alpha is the acceptance rate — the probability that the target accepts one of the draft's guesses. It is a property of the pair of models, not of the code.</p>
+    <p class="say">And c is the cost ratio — how expensive one draft step is relative to one target step. That one is a property of the implementation and the hardware.</p>
+    <p class="say">Together: speedup equals E over gamma-c plus one. The numerator grows with the draft's quality, the denominator with its cost. There is a speedup only while the gain outruns the price — and that single sentence explains nearly every result that follows.</p>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="num">07</div>
+  <div>
+    <h2>Result — 2.75×</h2>
+    <span class="meta">~1 min</span>
+    <p class="say">Here is the main result. At gamma equals three we measure a <em>2.75× speedup</em>, with output identical to standard decoding.</p>
+    <p class="say">Reading the table: alpha is the acceptance rate, tokens per round is how many tokens come out of a single call to the big model, then theory against measured.</p>
+    <p class="say">The last column is the ratio between them — how much of the predicted speedup we actually realise. At gamma one and three it is ninety-seven and ninety percent, so the model describes reality very well.</p>
+    <p class="say">Above that it drops sharply, and the next slides explain why.</p>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="num">08</div>
+  <div>
+    <h2>Result — distilled draft</h2>
+    <span class="meta">~40 s</span>
+    <p class="say">We then trained the draft model to imitate the target more closely, and re-ran the same measurements.</p>
+    <p class="say">Every row moves up. At gamma three, from 2.75 to 2.92; at gamma five, from 2.37 to 2.73.</p>
+    <p class="say">The gain is modest but consistent — and notice it is largest at high gamma. That makes sense: a better guesser pays off most when you guess deeper.</p>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="num">09</div>
+  <div>
+    <h2>Side by side — the live demo</h2>
+    <span class="meta">~50 s <span class="clicks">1 click, then wait 5 s</span></span>
+    <p class="say">Rather than leave that as a table, let me show you what it looks like.</p>
+    <p class="say">Both panels are about to generate the <em>same paragraph</em>, from the same model, with the same sampling. Left is standard decoding, right is speculative with the distilled draft.</p>
+    <p class="say"><span class="enter">ENTER</span>Watch the right-hand side — it does not arrive smoothly. It comes in <em>bursts</em>. Each burst is one call to the big model returning several accepted tokens at once. That is the entire mechanism, made visible.</p>
+    <p class="say">The right panel finishes in one point seven seconds. The left is still going — five seconds for the same text. And the live counter settles at two point nine two, which is exactly the number from the previous slide.</p>
+    <div class="cue"><b>Cue:</b> stay quiet for the last two seconds and let them watch the left side still typing. That silence is the point. If the demo does not start, click anywhere on the panels.</div>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="num">10</div>
+  <div>
+    <h2>Analysis — alpha decays with depth</h2>
+    <span class="meta">~45 s</span>
+    <p class="say">Here is the first thing the numbers tell us. Alpha is not one fixed value — it decays the deeper we guess: from 0.905 at gamma one down to 0.655 at gamma eight.</p>
+    <p class="say">The reason is intuitive. The draft almost always gets the first token right, because the context is still exactly what the target saw. Each further guess is built on the previous ones, so the draft slowly drifts away from what the target would have said.</p>
+    <p class="say">That decay is why efficiency falls from 0.97 to 0.47. The theory says larger gamma always helps; the measurement disagrees, and this is why.</p>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="num">11</div>
+  <div>
+    <h2>Ceiling — a perfect draft buys 15%</h2>
+    <span class="meta">~50 s</span>
+    <p class="say">This slide answers an obvious question: how much is left to gain if we simply made the draft better?</p>
+    <p class="say">If the draft were perfect — alpha exactly one, every guess accepted, always — we would go from 3.06 to 3.53. That is <em>fifteen percent</em>. That is the entire ceiling.</p>
+    <p class="say">So alpha is not the bottleneck. The bottleneck is the cost of guessing and the overhead of the implementation. Which means the payoff is in making the draft <em>cheaper</em>, not smarter — and that reverses the intuition most people start with.</p>
+    <div class="cue"><b>Cue:</b> strongest analytical point in the talk. Slow down here.</div>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="num">12</div>
+  <div>
+    <h2>Distillation — how it was done</h2>
+    <span class="meta">~50 s</span>
+    <p class="say">Briefly, how the distillation was done.</p>
+    <p class="say">The target model generates continuations from Wikipedia prefixes, and for every position we store its top fifty candidate tokens with their probabilities.</p>
+    <p class="say">The draft is then trained to reproduce that whole distribution — not just the token that happened to be sampled. That matters, because alpha measures how much two distributions overlap, not how often one guesses the same word.</p>
+    <p class="say">Alpha rose from 0.905 to 0.93, worth about six percent at gamma three. Set against the fifteen percent ceiling from the previous slide, distillation captured roughly a third of everything available.</p>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="num">13</div>
+  <div>
+    <h2>Draft size — the smallest wins</h2>
+    <span class="meta">~50 s</span>
+    <p class="say">The other obvious question: why not use a bigger draft model? So we measured three — half a billion, one and a half, and three billion parameters, all against the same target.</p>
+    <p class="say">The bigger drafts <em>are</em> better guessers. Alpha rises from 0.905 to 0.929 to 0.934. But look at the cost: 0.044, then 0.138, then 0.276.</p>
+    <p class="say">And notice the shape. Going from half a billion to one and a half buys 0.024 in alpha. Going from one and a half to three buys only 0.005 — five times less. Quality saturates. Cost does not: every doubling is paid in full.</p>
+    <p class="say">So the smallest draft wins, and it wins comfortably.</p>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="num">14</div>
+  <div>
+    <h2>Comparison chart</h2>
+    <span class="meta">~40 s</span>
+    <p class="say">The same result as a picture, and it shows two things the table cannot.</p>
+    <p class="say">First, all three curves peak at gamma three. The optimal guess depth does not depend on the size of the draft.</p>
+    <p class="say">Second, the curves never cross. The small draft is better at every single depth — not just on average.</p>
+    <p class="say">And the gap widens as we go right: the deeper you guess, the more a large draft costs you.</p>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="num">15</div>
+  <div>
+    <h2>Conclusions</h2>
+    <span class="meta">~1 min</span>
+    <p class="say">To summarise, five findings.</p>
+    <p class="say">One — the method works: 2.75 times faster, with output identical to normal decoding.</p>
+    <p class="say">Two — the theory holds. The speedup model reproduces our measurements up to gamma three, and where it diverges we can explain why.</p>
+    <p class="say">Three — smaller drafts win, because cost grows faster than quality.</p>
+    <p class="say">Four — distillation helps, but modestly, and that is not a failure of training: the ceiling itself is only fifteen percent.</p>
+    <p class="say">Five — and this is the practical conclusion — the next step is a <em>cheaper</em> draft, not a better one.</p>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="num">16</div>
+  <div>
+    <h2>Questions</h2>
+    <span class="meta">—</span>
+    <p class="say">Thank you. The code, the raw logs and all the measurements are in the repository. I'm happy to take questions.</p>
+    <div class="cue"><b>Likely questions:</b><br>
+    Why not a bigger draft? — slide 13, we measured all three.<br>
+    Why not guess deeper? — slide 10, alpha decays with depth.<br>
+    Is the output really identical? — slide 05, the proof plus a 100k-sample check.<br>
+    Why is measured below theory? — implementation overhead the model doesn't account for.</div>
+  </div>
+</div>
+
+<div class="total">
+  Total speaking time: <span class="mono">≈ 11 min</span>, leaving room for questions.
+  If you need to cut, shorten slide <span class="mono">12</span> to two sentences — the argument survives intact,
+  because slide <span class="mono">11</span> already establishes why distillation cannot matter much.
+</div>
+
+</div>

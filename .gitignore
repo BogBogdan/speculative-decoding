@@ -11,3 +11,7 @@ results/*.json
 data/
 data.zip
 *.parquet
+
+# prezentacija - zavisnosti i build se ne cuvaju
+node_modules/
+prezentacija/dist/
