@@ -14,10 +14,10 @@ from src.metrics import Merenja, izmeri_c, perplexity, autoregresivno
 DEVICE = os.environ.get("DEVICE", "cuda" if torch.cuda.is_available() else "cpu")
 DTYPE = torch.bfloat16 if DEVICE == "cuda" else torch.float32
 DRAFT_ID = os.environ.get("DRAFT_ID", "Qwen/Qwen2.5-0.5B")
-TARGET_ID = os.environ.get("TARGET_ID", "Qwen/Qwen2.5-7B")
+TARGET_ID = os.environ.get("TARGET_ID", "Qwen/Qwen2.5-14B")
 
 tok = AutoTokenizer.from_pretrained(DRAFT_ID)
-V = len(tok)          # 151665 stvarnih tokena; 0.5B ima 151936 a 7B/14B 152064 mesta,
+V = len(tok)          # 151665 stvarnih tokena; 0.5B ima 151936 a 14B 152064 mesta,
 EOS_ID = tok.eos_token_id   # visak su neistrenirani redovi koji ne dekodiraju ni u sta
 
 draft  = AutoModelForCausalLM.from_pretrained(DRAFT_ID, dtype=DTYPE).to(DEVICE).eval()
