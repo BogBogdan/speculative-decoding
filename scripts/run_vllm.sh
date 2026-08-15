@@ -6,7 +6,7 @@
 
 set -u
 PY=${PY:-python}
-export TARGET_ID=${TARGET_ID:-Qwen/Qwen2.5-7B}
+export TARGET_ID=${TARGET_ID:-Qwen/Qwen2.5-14B}
 export DRAFT_ID=${DRAFT_ID:-Qwen/Qwen2.5-0.5B}
 export MAX_NOVIH=${MAX_NOVIH:-128}
 export BROJ_PREFIKSA=${BROJ_PREFIKSA:-3}

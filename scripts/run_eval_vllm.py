@@ -25,7 +25,7 @@ import torch
 from vllm import LLM, SamplingParams
 
 DRAFT_ID = os.environ.get("DRAFT_ID", "Qwen/Qwen2.5-0.5B")
-TARGET_ID = os.environ.get("TARGET_ID", "Qwen/Qwen2.5-7B")
+TARGET_ID = os.environ.get("TARGET_ID", "Qwen/Qwen2.5-14B")
 GAMMA = int(os.environ.get("GAMMA", 0))          # 0 = bez spekulacije
 # draft_model = poseban model; ngram / ngram_gpu / suffix = nagadjanje iz teksta, bez modela
 METODA = os.environ.get("METODA", "draft_model")
@@ -69,8 +69,10 @@ def napravi_llm():
 
 
 def prijavi_alfa(llm):
-    """Stopa prihvatanja iz vLLM metrika. Naziv se menjao kroz verzije,
-    pa je najbolji trud - treba da bude oko 0.66 za par 0.5B/7B."""
+    """Stopa prihvatanja iz vLLM metrika. Naziv se menjao kroz verzije, pa je
+    najbolji trud. Za par 0.5B/14B ocekivana alfa jos nije izmerena - stara
+    vrednost 0.66 vazila je za 0.5B/7B i ne prenosi se, jer je razmak izmedju
+    draft i target modela sada veci."""
     try:
         for izvor in (getattr(llm, "llm_engine", None), llm):
             for ime in ("get_metrics", "_get_stats", "get_stats"):

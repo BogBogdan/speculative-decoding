@@ -3,22 +3,24 @@
 #
 #   bash scripts/setup_gpu.sh
 #
-# Provereno na: AWS g5.xlarge (A10G 22.5 GB), Ubuntu, NVIDIA drajver 595.x,
-# Python 3.14, torch 2.13.0+cu130, transformers 5.15.0, vLLM 0.27.1.
+# Softverski stek proveren na: AWS g5.xlarge (A10G 22.5 GB), Ubuntu, NVIDIA
+# drajver 595.x, Python 3.14, torch 2.13.0+cu130, transformers 5.15.0, vLLM 0.27.1.
+# PAZNJA: sam A10G vise NIJE dovoljan - target je Qwen2.5-14B, kome same tezine
+# u bf16 uzimaju ~28 GB, pa merenja idu na karticu od 40 GB navise.
 #
 # ZAHTEVI PRE POKRETANJA
-#   - GPU sa najmanje 22 GB (za Qwen2.5-7B u bf16)
-#   - najmanje 80 GB slobodno na disku, vidi racunicu dole
+#   - GPU sa najmanje 40 GB (za Qwen2.5-14B u bf16)
+#   - najmanje 110 GB slobodno na disku, vidi racunicu dole
 #   - NVIDIA drajveri instalirani (nvidia-smi radi)
 #
-# ZAUZECE DISKA (izmereno)
+# ZAUZECE DISKA (venv-ovi izmereni na 7B postavci; 14B stavke su procena)
 #   venv (torch)            5.1 GB
 #   venv-vllm               8.1 GB
-#   HF kes (0.5B + 7B)       16 GB
+#   HF kes (0.5B + 14B)      ~29 GB
 #   draft-151665            953 MB
-#   target-151665            15 GB
+#   target-151665            ~28 GB
 #   -------------------------------
-#   ukupno                  ~46 GB   + sistem ~15 GB  =  ~61 GB
+#   ukupno                  ~71 GB   + sistem ~15 GB  =  ~86 GB
 #
 # Ako je disk manji, prosiri ga u AWS konzoli (Volumes -> Modify Volume) pa:
 #   sudo growpart /dev/nvme0n1 1 && sudo resize2fs /dev/nvme0n1p1
@@ -53,7 +55,7 @@ mkdir -p "$REPO/data"
 "$HOME/venv/bin/python" "$REPO/train/get_dataset.py"
 
 echo "### 5. modeli sa izjednacenim recnikom ###"
-# Qwen2.5-0.5B ima vocab_size 151936, a 7B/14B 152064, dok tokenizer ima 151665.
+# Qwen2.5-0.5B ima vocab_size 151936, a 14B 152064, dok tokenizer ima 151665.
 # I HF i vLLM ODBIJAJU par sa razlicitim vocab_size. Oba se smanjuju na 151665 -
 # smanjivanje je cisto odsecanje, ne pravi nove redove.
 "$HOME/venv/bin/python" "$REPO/scripts/pripremi_modele.py"

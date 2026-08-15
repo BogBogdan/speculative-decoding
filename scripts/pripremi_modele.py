@@ -18,7 +18,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 DRAFT_ID = os.environ.get("DRAFT_ID", "Qwen/Qwen2.5-0.5B")
-TARGET_ID = os.environ.get("TARGET_ID", "Qwen/Qwen2.5-7B")
+TARGET_ID = os.environ.get("TARGET_ID", "Qwen/Qwen2.5-14B")
 IZLAZ_DRAFT = os.environ.get("IZLAZ_DRAFT", os.path.expanduser("~/draft-151665"))
 IZLAZ_TARGET = os.environ.get("IZLAZ_TARGET", os.path.expanduser("~/target-151665"))
 
